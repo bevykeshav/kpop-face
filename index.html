@@ -116,7 +116,7 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,15vw,84px);line-heig
 
 /* PRO FULL CONTENT */
 .pro-content{display:none;}
-.pro-content.unlocked{display:block;animation:fadeUp .5s ease forwards;}
+.pro-content.unlocked{display:block !important;animation:fadeUp .5s ease forwards;}
 
 .pro-section{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 20px;margin-bottom:14px;}
 .pro-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--cyan);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
@@ -805,13 +805,23 @@ function handlePayment(){
 function unlockProContent(){
   const m=globalMetrics;
   const fd=globalFaceData;
+
+  // Safety check
+  if(!m || !fd){
+    showToast('Pehle photo analyze karo!');
+    return;
+  }
+
   const base=Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
   const jawLabel=m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
   const skinLabel=m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Needs Care';
   const name=globalPayerName||'Idol Fan';
 
-  // Hide pro teaser
+  // Hide pro teaser, show pro content
   document.getElementById('proTeaser').style.display='none';
+  const pc=document.getElementById('proContent');
+  pc.style.display='block';
+  pc.classList.add('unlocked');
 
   // Summary card
   document.getElementById('sumName').textContent=name;
@@ -910,9 +920,10 @@ function unlockProContent(){
     <p style="margin-top:12px;font-size:12px;color:var(--border)">Payment ID: ${window._paymentId||'--'}</p>
   `;
 
-  document.getElementById('proContent').classList.add('unlocked');
-  showToast('Pro report unlock ho gayi! Scroll karke dekho');
-  setTimeout(()=>document.getElementById('proContent').scrollIntoView({behavior:'smooth',block:'start'}),300);
+  showToast('Pro report unlock ho gayi! Neeche scroll karo');
+  setTimeout(()=>{
+    document.getElementById('proContent').scrollIntoView({behavior:'smooth',block:'start'});
+  },400);
 }
 
 // ═══════════════════════════════════════════
@@ -1190,11 +1201,12 @@ function getLookbook(key){
 // ═══════════════════════════════════════════
 function resetApp(){
   ['previewWrap','btnAnalyze','freeResults','errorBox'].forEach(id=>document.getElementById(id).style.display='none');
-  document.getElementById('proContent').classList.remove('unlocked');
-  document.getElementById('proContent').style.display='none';
+  const pc=document.getElementById('proContent');
+  pc.classList.remove('unlocked');
+  pc.style.display='none';
   document.getElementById('proTeaser').style.display='block';
   document.getElementById('uploadZone').style.display='block';
-  fileInput.value='';currentImg=null;
+  fileInput.value='';currentImg=null;globalMetrics=null;globalFaceData=null;
   ['fSym','fJaw','fSkin','fEye','confFill'].forEach(id=>document.getElementById(id).style.width='0%');
   window.scrollTo({top:0,behavior:'smooth'});
 }
