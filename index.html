@@ -318,90 +318,90 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,15vw,84px);line-heig
       <button class="btn-gold" onclick="showPayModal()">UNLOCK FULL REPORT — Rs.49</button>
     </div>
 
-    <button class="btn-outline" onclick="resetApp()">NAYI PHOTO ANALYZE KARO</button>
-  </div>
+    <!-- PRO CONTENT — unlocks here after payment -->
+    <div class="pro-content" id="proContent">
 
-  <!-- PRO CONTENT (unlocked after payment) -->
-  <div class="pro-content" id="proContent">
-
-    <!-- PDF Download + Share -->
-    <div class="pdf-btn-wrap">
-      <button class="btn-pdf" onclick="downloadSimplePDF()">📄 PDF Download</button>
-      <button class="btn-pdf" onclick="shareCard()">🔗 Share Card</button>
-    </div>
-
-    <!-- Summary / Share Card -->
-    <div class="summary-card" id="summaryCard">
-      <div class="idol-badge">IDOL TWIN CARD</div>
-      <div class="summary-name" id="sumName">--</div>
-      <div class="summary-type" id="sumType">--</div>
-      <div class="summary-stats">
-        <div class="summary-stat">
-          <div class="summary-stat-val" id="sumSym">--</div>
-          <div class="summary-stat-label">SYMMETRY</div>
-        </div>
-        <div class="summary-stat">
-          <div class="summary-stat-val" id="sumJaw">--</div>
-          <div class="summary-stat-label">JAWLINE</div>
-        </div>
-        <div class="summary-stat">
-          <div class="summary-stat-val" id="sumEye">--</div>
-          <div class="summary-stat-label">EYE RATIO</div>
-        </div>
-        <div class="summary-stat">
-          <div class="summary-stat-val" id="sumSkin">--</div>
-          <div class="summary-stat-label">SKIN</div>
-        </div>
+      <!-- PDF Download + Share -->
+      <div class="pdf-btn-wrap">
+        <button class="btn-pdf" onclick="downloadSimplePDF()">📄 PDF Download</button>
+        <button class="btn-pdf" onclick="shareCard()">🔗 Share Card</button>
       </div>
-      <div class="summary-twin">Top Match: <span id="sumTwin">--</span></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace">idolface.app — AI-Powered K-pop Analysis</div>
-    </div>
 
-    <!-- Full 20 Metrics -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>📊</span> FULL 20-METRIC ANALYSIS</div>
-      <div id="allMetricsGrid" class="metrics-grid"></div>
-    </div>
+      <!-- Summary / Share Card -->
+      <div class="summary-card" id="summaryCard">
+        <div class="idol-badge">IDOL TWIN CARD</div>
+        <div class="summary-name" id="sumName">--</div>
+        <div class="summary-type" id="sumType">--</div>
+        <div class="summary-stats">
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumSym">--</div>
+            <div class="summary-stat-label">SYMMETRY</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumJaw">--</div>
+            <div class="summary-stat-label">JAWLINE</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumEye">--</div>
+            <div class="summary-stat-label">EYE RATIO</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumSkin">--</div>
+            <div class="summary-stat-label">SKIN</div>
+          </div>
+        </div>
+        <div class="summary-twin">Top Match: <span id="sumTwin">--</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace">idolface.app — AI-Powered K-pop Analysis</div>
+      </div>
 
-    <!-- 10+ Idol Matches -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>🎤</span> ALL IDOL MATCHES (10+)</div>
-      <div class="all-idols" id="allIdolMatches"></div>
-    </div>
+      <!-- Full 20 Metrics -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>📊</span> FULL 20-METRIC ANALYSIS</div>
+        <div id="allMetricsGrid" class="metrics-grid"></div>
+      </div>
 
-    <!-- Hairstyle Recommendations -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>💇</span> BEST HAIRSTYLE RECOMMENDATIONS</div>
-      <div class="hair-cards" id="hairCards"></div>
-    </div>
+      <!-- 10+ Idol Matches -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>🎤</span> ALL IDOL MATCHES (10+)</div>
+        <div class="all-idols" id="allIdolMatches"></div>
+      </div>
 
-    <!-- K-beauty Skincare Routine -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>✨</span> K-BEAUTY SKINCARE ROUTINE</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Space Mono',monospace" id="skincareType"></div>
-      <div class="skincare-steps" id="skincareSteps"></div>
-    </div>
+      <!-- Hairstyle Recommendations -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>💇</span> BEST HAIRSTYLE RECOMMENDATIONS</div>
+        <div class="hair-cards" id="hairCards"></div>
+      </div>
 
-    <!-- Makeup Tips -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>💄</span> MAKEUP AND STYLING TIPS</div>
-      <div class="makeup-tips" id="makeupTips"></div>
-    </div>
+      <!-- K-beauty Skincare Routine -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>✨</span> K-BEAUTY SKINCARE ROUTINE</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Space Mono',monospace" id="skincareType"></div>
+        <div class="skincare-steps" id="skincareSteps"></div>
+      </div>
 
-    <!-- Idol Lookbook -->
-    <div class="pro-section">
-      <div class="pro-section-title"><span>👑</span> IDOL STYLE LOOKBOOK</div>
-      <div class="lookbook-grid" id="lookbookGrid"></div>
-    </div>
+      <!-- Makeup Tips -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>💄</span> MAKEUP AND STYLING TIPS</div>
+        <div class="makeup-tips" id="makeupTips"></div>
+      </div>
 
-    <!-- Journey Summary -->
-    <div class="pro-section" style="text-align:center;">
-      <div class="pro-section-title" style="justify-content:center;"><span>🌟</span> YOUR IDOL JOURNEY</div>
-      <div id="journeySummary" style="font-size:13px;color:var(--muted);line-height:1.8;text-align:left;"></div>
-    </div>
+      <!-- Idol Lookbook -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>👑</span> IDOL STYLE LOOKBOOK</div>
+        <div class="lookbook-grid" id="lookbookGrid"></div>
+      </div>
+
+      <!-- Journey Summary -->
+      <div class="pro-section" style="text-align:center;">
+        <div class="pro-section-title" style="justify-content:center;"><span>🌟</span> YOUR IDOL JOURNEY</div>
+        <div id="journeySummary" style="font-size:13px;color:var(--muted);line-height:1.8;text-align:left;"></div>
+      </div>
+
+    </div><!-- end proContent -->
 
     <button class="btn-outline" onclick="resetApp()">NAYI PHOTO ANALYZE KARO</button>
-  </div>
+  </div><!-- end freeResults -->
+
 
 </div>
 
@@ -922,8 +922,10 @@ function unlockProContent(){
 
   showToast('Pro report unlock ho gayi! Neeche scroll karo');
   setTimeout(()=>{
-    document.getElementById('proContent').scrollIntoView({behavior:'smooth',block:'start'});
-  },400);
+    const pc = document.getElementById('proContent');
+    const y = pc.getBoundingClientRect().top + window.pageYOffset - 20;
+    window.scrollTo({top: y, behavior:'smooth'});
+  }, 300);
 }
 
 // ═══════════════════════════════════════════
