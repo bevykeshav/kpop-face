@@ -1687,7 +1687,6 @@ document.getElementById('main-app').style.display;
 
   var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxoVySkI8qRcevogKEiCr3dcWA0JiA3tK6lhlandwFB3CR-tyoyMLfdapd_KA2qGgLagg/exec';
   var UPI_ID = 'keshavb12@axl';
-  var STORAGE_KEY = 'kpop_idol_face_key';
 
   // ── Generate QR ──────────────────────────────────────
   var upiLink = 'upi://pay?pa=' + UPI_ID + '&pn=KPop%20Tools&am=49&cu=INR&tn=KPop%20Tools%201%20Month';
@@ -1721,16 +1720,21 @@ document.getElementById('main-app').style.display;
   var errEl = document.getElementById('gate-error');
   var sucEl = document.getElementById('gate-success');
 
-  // Auto-format key
+  // ── Auto-format: KPOP-XXXXXX ─────────────────────────
   inp.addEventListener('input', function(){
     var v = this.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();
-    if(v.startsWith('KPOP')){
-      var rest = v.slice(4), parts = ['KPOP'];
-      for(var i=0; i<rest.length && parts.length<5; i+=4)
-        parts.push(rest.slice(i,i+4));
-      this.value = parts.join('-');
-    } else { this.value = v; }
+    if(v.length <= 4){
+      this.value = v;
+    } else {
+      var prefix = v.slice(0,4);
+      var rest   = v.slice(4,10);
+      this.value = prefix + (rest.length ? '-' + rest : '');
+    }
   });
+
+  // ── Update placeholder ────────────────────────────────
+  inp.placeholder = 'KPOP-AB1234';
+  inp.maxLength = 11; // KPOP-XXXXXX = 11 chars
 
   function setLoading(on){
     btn.disabled = on;
@@ -1738,6 +1742,7 @@ document.getElementById('main-app').style.display;
       ? '<span class="gate-spin"></span>VERIFY HO RAHA HAI...'
       : 'UNLOCK KARO →';
   }
+
   function showErr(msg){
     errEl.textContent = msg;
     errEl.style.display = 'block';
@@ -1763,19 +1768,17 @@ document.getElementById('main-app').style.display;
   function attempt(){
     var key = inp.value.trim().toUpperCase();
     if(!key){ showErr('Key enter karo pehle'); return; }
-    if(!/^KPOP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)){
-      showErr('Format galat hai — KPOP-XXXX-XXXX-XXXX-XXXX'); return;
+    if(!/^KPOP-[A-Z0-9]{6}$/.test(key)){
+      showErr('Format: KPOP-AB1234 (6 characters)'); return;
     }
     setLoading(true);
     verify(key, function(ok, user, msg){
       if(ok){
-        localStorage.setItem(STORAGE_KEY, key);
         sucEl.textContent = '✅ Valid! Tool load ho raha hai...';
         sucEl.style.display = 'block';
         errEl.style.display = 'none';
         setTimeout(unlock, 900);
       } else {
-        localStorage.removeItem(STORAGE_KEY);
         showErr(msg || 'Key invalid hai');
         setLoading(false);
       }
@@ -1785,20 +1788,8 @@ document.getElementById('main-app').style.display;
   btn.addEventListener('click', attempt);
   inp.addEventListener('keydown', function(e){ if(e.key==='Enter') attempt(); });
 
-  // ── Check saved key on load ───────────────────────────
-  var saved = localStorage.getItem(STORAGE_KEY);
-  if(saved){
-    setLoading(true);
-    btn.innerHTML = '<span class="gate-spin"></span>KEY CHECK HO RAHI HAI...';
-    verify(saved, function(ok, user, msg){
-      if(ok){ unlock(); }
-      else {
-        localStorage.removeItem(STORAGE_KEY);
-        setLoading(false);
-        showErr(msg || 'Subscription expire ho gaya. Nayi key lo.');
-      }
-    });
-  }
+  // ── NO localStorage — har baar key maangega ──────────
+  // (intentionally removed)
 
 })();
 </script>
