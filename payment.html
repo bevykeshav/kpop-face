@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KPop Tools — Subscribe ₹49/month</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono&display=swap" rel="stylesheet">
+
+<!-- ═══ QR CODE LIBRARY ═══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+:root{
+  --bg:#080810;
+  --card:#0f0f1a;
+  --card2:#161624;
+  --border:#1e1e30;
+  --pink:#ff2d78;
+  --cyan:#00f5d4;
+  --gold:#ffd700;
+  --text:#eeeef5;
+  --muted:#6060a0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans KR',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* ── animated bg ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 10% 10%,rgba(255,45,120,.12),transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 90%,rgba(0,245,212,.1),transparent 60%),
+    radial-gradient(ellipse 50% 60% at 50% 50%,rgba(255,215,0,.04),transparent 70%);
+  pointer-events:none;z-index:0;
+  animation:bgshift 8s ease-in-out infinite alternate;
+}
+@keyframes bgshift{
+  from{opacity:.8;}to{opacity:1;}
+}
+
+/* grid lines */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,45,120,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,45,120,.03) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+.wrap{
+  position:relative;z-index:2;
+  max-width:480px;margin:0 auto;
+  padding:0 16px 60px;
+}
+
+/* ── HEADER ── */
+.header{
+  text-align:center;padding:40px 0 32px;
+  animation:fadeDown .6s ease both;
+}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+
+.channel-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);
+  border-radius:20px;padding:6px 16px;
+  font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--gold);letter-spacing:2px;margin-bottom:16px;
+}
+.channel-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+.logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(52px,15vw,80px);
+  line-height:.9;letter-spacing:4px;
+  background:linear-gradient(150deg,#fff 0%,var(--pink) 50%,var(--cyan) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.logo-sub{
+  font-size:11px;color:var(--muted);letter-spacing:4px;
+  margin-top:6px;font-family:'Space Mono',monospace;
+}
+
+/* ── PRICE CARD ── */
+.price-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-top:3px solid var(--pink);
+  padding:28px 24px;
+  margin:20px 0 16px;
+  position:relative;overflow:hidden;
+  animation:fadeUp .6s .1s ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.price-card::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,45,120,.12),transparent 70%);
+}
+.price-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--pink);color:#fff;
+  font-size:9px;font-weight:700;letter-spacing:2px;
+  padding:4px 12px;border-radius:12px;margin-bottom:14px;
+  font-family:'Space Mono',monospace;
+}
+.price-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:28px;letter-spacing:2px;margin-bottom:6px;
+}
+.price-row{
+  display:flex;align-items:baseline;gap:10px;margin-bottom:16px;
+}
+.price-old{font-size:16px;text-decoration:line-through;color:var(--muted);}
+.price-new{
+  font-family:'Bebas Neue',sans-serif;font-size:52px;
+  color:var(--gold);line-height:1;
+}
+.price-per{font-size:13px;color:var(--muted);}
+
+.features{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.features li{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:#c0c0e0;
+}
+.features li::before{
+  content:'✦';color:var(--cyan);font-size:10px;flex-shrink:0;
+}
+
+/* ── STEPS ── */
+.steps-wrap{
+  margin:16px 0;
+  animation:fadeUp .6s .2s ease both;
+}
+.steps-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:16px;letter-spacing:3px;
+  color:var(--muted);margin-bottom:12px;
+  text-align:center;
+}
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{
+  display:flex;gap:16px;align-items:flex-start;
+  padding:14px 0;
+  border-bottom:1px solid rgba(30,30,48,.8);
+  position:relative;
+}
+.step:last-child{border-bottom:none;}
+.step-num{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.3);
+  color:var(--pink);font-family:'Bebas Neue',sans-serif;font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:2px;
+}
+.step-body{}
+.step-label{font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:3px;}
+.step-text{font-size:14px;font-weight:500;}
+
+/* ── QR SECTION ── */
+.qr-section{
+  background:var(--card);border:1px solid var(--border);
+  border-top:3px solid var(--cyan);
+  padding:28px 24px;margin:16px 0;
+  text-align:center;
+  animation:fadeUp .6s .3s ease both;
+}
+.qr-label{
+  font-family:'Space Mono',monospace;font-size:9px;
+  letter-spacing:3px;color:var(--cyan);margin-bottom:16px;
+}
+.qr-box{
+  display:inline-block;
+  background:#fff;padding:12px;border-radius:4px;
+  margin-bottom:16px;
+  box-shadow:0 0 40px rgba(0,245,212,.15);
+}
+#qr-code img, #qr-code canvas{display:block;}
+
+.upi-id-display{
+  font-family:'Space Mono',monospace;
+  background:var(--card2);border:1px solid var(--border);
+  padding:12px 16px;font-size:13px;
+  color:var(--cyan);letter-spacing:1px;
+  margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;
+}
+.copy-btn{
+  background:rgba(0,245,212,.1);border:1px solid rgba(0,245,212,.2);
+  color:var(--cyan);font-size:10px;padding:5px 10px;
+  cursor:pointer;font-family:'Space Mono',monospace;
+  letter-spacing:1px;transition:all .2s;flex-shrink:0;
+}
+.copy-btn:active{background:rgba(0,245,212,.25);}
+
+.amount-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);
+  padding:8px 20px;border-radius:20px;
+  font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);
+}
+
+.upi-apps{
+  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
+  margin-top:14px;
+}
+.upi-app{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:20px;padding:5px 14px;
+  font-size:11px;color:var(--muted);
+}
+
+/* ── FORM BUTTON ── */
+.form-section{
+  margin:16px 0;
+  animation:fadeUp .6s .4s ease both;
+}
+.form-note{
+  background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.15);
+  padding:14px 16px;margin-bottom:14px;
+  font-size:12px;color:#c0b060;line-height:1.7;
+}
+.form-note strong{color:var(--gold);}
+
+.btn-form{
+  display:block;width:100%;padding:20px;
+  background:linear-gradient(135deg,var(--pink),#c01060);
+  border:none;border-radius:4px;
+  color:#fff;font-family:'Bebas Neue',sans-serif;
+  font-size:22px;letter-spacing:3px;
+  cursor:pointer;text-decoration:none;text-align:center;
+  box-shadow:0 8px 32px rgba(255,45,120,.3);
+  transition:all .2s;
+  animation:glow 2s ease-in-out infinite alternate;
+}
+@keyframes glow{
+  from{box-shadow:0 8px 32px rgba(255,45,120,.3);}
+  to{box-shadow:0 8px 48px rgba(255,45,120,.55);}
+}
+.btn-form:hover{transform:translateY(-2px);}
+.btn-form:active{transform:scale(.98);}
+
+.btn-sub{
+  font-size:11px;color:var(--muted);text-align:center;
+  display:block;margin-top:10px;
+  font-family:'Space Mono',monospace;letter-spacing:1px;
+}
+
+/* ── TRUST STRIP ── */
+.trust-strip{
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+  margin:20px 0 8px;
+  animation:fadeUp .6s .5s ease both;
+}
+.trust-item{
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;color:var(--muted);
+  background:var(--card2);border:1px solid var(--border);
+  padding:5px 12px;border-radius:20px;
+}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--card2);border:1px solid var(--border);
+  border-left:3px solid var(--cyan);
+  padding:12px 20px;font-size:13px;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:999;white-space:nowrap;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="channel-tag">
+      <span class="dot"></span>
+      KPOP CHANNEL TOOLS
+    </div>
+    <div class="logo">KPOP<br>TOOLS</div>
+    <div class="logo-sub">SUBSCRIPTION ACCESS</div>
+  </div>
+
+  <!-- PRICE CARD -->
+  <div class="price-card">
+    <div class="price-badge">★ MONTHLY PASS</div>
+    <div class="price-title">FULL TOOL ACCESS</div>
+    <div class="price-row">
+      <span class="price-old">₹149</span>
+      <span class="price-new">₹49</span>
+      <span class="price-per">/ mahina</span>
+    </div>
+    <ul class="features">
+      <li>Idol Face AI Analyzer — complete pro report</li>
+      <li>Face Note Checker Tool</li>
+      <li>Naye tools bhi milenge (coming soon)</li>
+      <li>1 mahine ka full access — license key milegi</li>
+      <li>Key expire hone par renew karo</li>
+    </ul>
+  </div>
+
+  <!-- STEPS -->
+  <div class="steps-wrap">
+    <div class="steps-title">— HOW IT WORKS —</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-label">STEP 01 — PAY</div>
+          <div class="step-text">Neeche diye UPI QR se <strong style="color:var(--gold)">₹49 pay karo</strong></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-label">STEP 02 — FORM</div>
+          <div class="step-text">Form bharo — naam, email aur <strong style="color:var(--cyan)">UPI Transaction ID</strong> dalo</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-label">STEP 03 — KEY MILEGI</div>
+          <div class="step-text">Aapki email pe <strong style="color:var(--pink)">license key aayegi</strong> — 1-2 ghante mein</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-label">STEP 04 — ENJOY!</div>
+          <div class="step-text">Key dalo aur sare tools use karo — <strong style="color:var(--gold)">1 mahine tak!</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR SECTION -->
+  <div class="qr-section">
+    <div class="qr-label">SCAN & PAY — UPI</div>
+
+    <div class="qr-box">
+      <div id="qr-code"></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div class="amount-badge">💰 ₹49 ONLY</div>
+    </div>
+
+    <div class="upi-id-display">
+      <!-- ▼▼▼ APNA UPI ID YAHAN LAGAO ▼▼▼ -->
+      <span id="upi-id-text">keshavb12@axl</span>
+      <button class="copy-btn" onclick="copyUPI()">COPY</button>
+    </div>
+
+    <div class="upi-apps">
+      <span class="upi-app">📱 PhonePe</span>
+      <span class="upi-app">🟢 GPay</span>
+      <span class="upi-app">💜 Paytm</span>
+      <span class="upi-app">🏦 Any UPI App</span>
+    </div>
+  </div>
+
+  <!-- FORM SECTION -->
+  <div class="form-section">
+    <div class="form-note">
+      ⚡ Payment karne ke baad <strong>NEECHE BUTTON dabao</strong> — form mein apna naam, email aur <strong>UPI Transaction ID</strong> bharo. Hum verify karke <strong>1-2 ghante mein key bhejenge!</strong>
+    </div>
+
+    <!-- ▼▼▼ APNA GOOGLE FORM LINK YAHAN LAGAO ▼▼▼ -->
+    <a class="btn-form" href="https://docs.google.com/forms/d/e/1FAIpQLSdJNBwkHV7VWGVF8kj7LQkqQfdJXSGrDDwv2zaRsn0UiF-TmA/viewform?usp=header" target="_blank">
+      ✅ PAYMENT KI GAYE — FORM BHARO
+    </a>
+    <span class="btn-sub">Payment ke baad hi form bharna hai</span>
+  </div>
+
+  <!-- TRUST -->
+  <div class="trust-strip">
+    <div class="trust-item">🔒 Secure UPI</div>
+    <div class="trust-item">⚡ 1-2hr Delivery</div>
+    <div class="trust-item">🎵 KPop Channel</div>
+    <div class="trust-item">💬 WhatsApp Support</div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- TOAST -->
+<div id="toast">✅ UPI ID copied!</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// ▼▼▼ APNA UPI ID YAHAN CHANGE KARO ▼▼▼
+const UPI_ID    = 'keshavb12@axl';
+const UPI_NAME  = 'KPop Tools';   // Apna naam
+const AMOUNT    = '49';
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+// Update displayed UPI ID
+document.getElementById('upi-id-text').textContent = UPI_ID;
+
+// Generate UPI deep-link QR
+const upiString = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${AMOUNT}&cu=INR&tn=${encodeURIComponent('KPop Tools 1 Month')}`;
+
+new QRCode(document.getElementById('qr-code'), {
+  text: upiString,
+  width: 200,
+  height: 200,
+  colorDark: '#000000',
+  colorLight: '#ffffff',
+  correctLevel: QRCode.CorrectLevel.H
+});
+
+// Copy UPI ID
+function copyUPI(){
+  navigator.clipboard.writeText(UPI_ID).then(()=>{
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2500);
+  });
+}
+</script>
+</body>
+</html>
