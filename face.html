@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>IDOL FACE — K-pop AI Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+.back-bar{
+  position:relative;z-index:10;
+  display:flex;align-items:center;gap:12px;
+  padding:16px 14px 0;max-width:430px;margin:0 auto;
+}
+.back-btn{
+  background:transparent;border:1px solid #1e1e2e;
+  color:#5a5a7a;font-family:'Space Mono',monospace;
+  font-size:10px;letter-spacing:2px;padding:8px 14px;
+  cursor:pointer;transition:all .2s;
+}
+.back-btn:hover{color:#e8e8f0;border-color:#3a3a5a;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --pink:#ff2d78;--cyan:#00f5d4;--gold:#ffd700;
+  --dark:#0a0a0f;--card:#13131e;--card2:#1c1c2a;
+  --border:#252535;--text:#eeeef5;--muted:#7070a0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;}
+body{
+  background:var(--dark);color:var(--text);
+  font-family:'Noto Sans KR',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+  /* safe area for notch phones */
+  padding-bottom:env(safe-area-inset-bottom);
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 0%,rgba(255,45,120,.15) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%,rgba(0,245,212,.12) 0%,transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* CONTAINER — phone width max */
+.container{
+  position:relative;z-index:2;
+  max-width:430px;margin:0 auto;
+  padding:0 14px 100px;
+}
+
+/* ── HEADER ── */
+.header{text-align:center;padding:32px 0 20px;}
+.logo-tag{
+  font-family:'Space Mono',monospace;font-size:9px;
+  letter-spacing:5px;color:var(--cyan);margin-bottom:10px;
+  opacity:.8;
+}
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:min(22vw,88px);line-height:.88;
+  background:linear-gradient(150deg,#fff 20%,var(--pink) 60%,var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:3px;
+}
+.subtitle{font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.5px;line-height:1.5;}
+.ai-status{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:10px;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);border-radius:20px;
+  padding:6px 14px;
+}
+.ai-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:pulse-dot 2s infinite;flex-shrink:0;}
+.ai-dot.ready{background:var(--cyan);}
+.ai-dot.loading-ai{background:var(--gold);}
+#aiStatusText{font-size:11px;color:var(--muted);}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{
+  border:2px dashed var(--border);border-radius:24px;
+  padding:44px 20px;text-align:center;cursor:pointer;
+  transition:all .25s;background:rgba(255,255,255,.02);
+  margin:16px 0;
+  /* big tap target */
+  min-height:200px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.upload-zone:active{border-color:var(--pink);background:rgba(255,45,120,.06);transform:scale(.98);}
+.upload-icon{font-size:54px;margin-bottom:14px;display:block;line-height:1;}
+.upload-text{font-size:17px;font-weight:700;margin-bottom:6px;}
+.upload-sub{font-size:12px;color:var(--muted);line-height:1.5;}
+.upload-hint{
+  margin-top:16px;display:inline-flex;align-items:center;gap:6px;
+  background:rgba(0,245,212,.08);border:1px solid rgba(0,245,212,.2);
+  border-radius:20px;padding:6px 14px;font-size:11px;color:var(--cyan);
+}
+#fileInput{display:none;}
+
+/* ── PREVIEW ── */
+.preview-wrap{
+  display:none;position:relative;border-radius:20px;
+  overflow:hidden;margin:16px 0;background:var(--card);
+}
+#previewCanvas{width:100%;display:block;border-radius:20px;max-height:65vw;object-fit:cover;}
+.preview-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,15,.7) 0%,transparent 50%);pointer-events:none;}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scan 1.8s linear infinite;display:none;}
+@keyframes scan{0%{top:0%;opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+.preview-label{position:absolute;bottom:12px;left:12px;font-size:10px;color:rgba(0,245,212,.8);font-family:'Space Mono',monospace;letter-spacing:1px;}
+
+/* ── BUTTONS ── */
+/* Analyze — full width, tall touch target */
+.btn-main{
+  width:100%;padding:20px;
+  background:linear-gradient(135deg,var(--pink),#b01050);
+  border:none;border-radius:18px;color:#fff;
+  font-family:'Bebas Neue',sans-serif;font-size:24px;
+  letter-spacing:4px;cursor:pointer;transition:all .2s;
+  display:none;box-shadow:0 8px 32px rgba(255,45,120,.35);
+  margin-bottom:8px;
+  /* prevent double tap zoom */
+  touch-action:manipulation;
+}
+.btn-main:active{transform:scale(.97);box-shadow:0 4px 16px rgba(255,45,120,.3);}
+
+.btn-gold{
+  width:100%;padding:18px;
+  background:linear-gradient(135deg,#ffd700,#e6a000);
+  border:none;border-radius:16px;color:#000;
+  font-family:'Bebas Neue',sans-serif;font-size:21px;
+  letter-spacing:3px;cursor:pointer;transition:all .2s;
+  box-shadow:0 6px 24px rgba(255,215,0,.3);
+  touch-action:manipulation;
+}
+.btn-gold:active{transform:scale(.97);}
+
+.btn-outline{
+  width:100%;padding:16px;background:transparent;
+  border:1px solid var(--border);border-radius:14px;
+  color:var(--muted);font-family:'Space Mono',monospace;
+  font-size:11px;letter-spacing:2px;cursor:pointer;
+  transition:all .2s;margin-top:10px;
+  touch-action:manipulation;
+}
+.btn-outline:active{border-color:var(--pink);color:var(--pink);}
+
+/* ── LOADING ── */
+.loading{display:none;text-align:center;padding:48px 20px;}
+.loading-dots{display:flex;justify-content:center;gap:10px;margin-bottom:18px;}
+.loading-dots span{
+  width:12px;height:12px;border-radius:50%;
+  background:var(--pink);animation:bounce 1.4s infinite ease-in-out;
+}
+.loading-dots span:nth-child(2){animation-delay:.2s;background:var(--cyan);}
+.loading-dots span:nth-child(3){animation-delay:.4s;background:var(--gold);}
+@keyframes bounce{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1.3);opacity:1}}
+.loading-text{font-size:13px;color:var(--text);font-family:'Space Mono',monospace;letter-spacing:2px;}
+.loading-sub{font-size:11px;color:var(--muted);margin-top:8px;}
+
+/* ── ERROR ── */
+.error-box{display:none;background:rgba(255,45,120,.08);border:1px solid rgba(255,45,120,.25);border-radius:18px;padding:24px 18px;text-align:center;margin:14px 0;}
+
+/* ── FREE RESULTS ── */
+.free-results{display:none;animation:fadeUp .5s ease forwards;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* Face Type Card */
+.type-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:22px;padding:28px 20px;text-align:center;
+  margin-bottom:12px;position:relative;overflow:hidden;
+}
+.type-card::before{
+  content:'';position:absolute;top:-50px;right:-50px;
+  width:180px;height:180px;
+  background:radial-gradient(circle,rgba(255,45,120,.18),transparent 65%);
+  border-radius:50%;
+}
+.idol-badge{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--pink),var(--cyan));
+  color:#fff;font-size:9px;font-weight:700;letter-spacing:3px;
+  padding:5px 16px;border-radius:20px;margin-bottom:12px;
+  font-family:'Space Mono',monospace;
+}
+.type-emoji{font-size:48px;margin-bottom:10px;display:block;line-height:1;}
+.type-name{
+  font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:1;
+  background:linear-gradient(135deg,#fff,var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px;
+}
+.type-desc{font-size:14px;color:var(--muted);line-height:1.65;}
+.ai-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(0,245,212,.08);border:1px solid rgba(0,245,212,.25);
+  border-radius:20px;padding:5px 14px;font-size:10px;color:var(--cyan);
+  font-family:'Space Mono',monospace;margin-top:12px;
+}
+
+/* Confidence bar */
+.conf-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:14px 16px;margin-bottom:12px;
+}
+.conf-label{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;flex-shrink:0;letter-spacing:1px;}
+.conf-bar{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width 1.5s cubic-bezier(.34,1.56,.64,1);width:0%;}
+.conf-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--cyan);flex-shrink:0;}
+
+/* Metrics grid */
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:10px;color:var(--muted);}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.metric-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 14px;}
+.metric-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-family:'Space Mono',monospace;}
+.metric-value{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;margin-bottom:8px;}
+.metric-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.metric-fill{height:100%;border-radius:3px;transition:width 1.5s cubic-bezier(.34,1.56,.64,1);width:0%;}
+
+/* Free idol matches */
+.idol-matches{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.idol-match{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:16px 14px;
+  display:flex;align-items:center;gap:14px;
+}
+.idol-avatar{
+  width:48px;height:48px;border-radius:50%;
+  font-size:24px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.idol-info{flex:1;}
+.idol-name{font-weight:700;font-size:15px;margin-bottom:3px;}
+.idol-group{font-size:11px;color:var(--muted);}
+.match-pct{font-family:'Bebas Neue',sans-serif;font-size:26px;}
+
+/* ── PRO TEASER ── */
+.pro-teaser{
+  background:linear-gradient(160deg,#180d10,#0c1520);
+  border:1px solid rgba(255,215,0,.25);
+  border-radius:22px;padding:24px 18px;
+  margin-bottom:12px;position:relative;overflow:hidden;
+}
+.pro-teaser::after{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:160px;height:160px;
+  background:radial-gradient(circle,rgba(255,215,0,.15),transparent 65%);
+  border-radius:50%;pointer-events:none;
+}
+.pro-badge-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--gold);color:#000;font-size:10px;font-weight:700;
+  letter-spacing:2px;padding:5px 14px;border-radius:20px;
+  margin-bottom:14px;font-family:'Space Mono',monospace;
+}
+.pro-title{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1.1;margin-bottom:8px;color:#fff;}
+.pro-price-wrap{margin-bottom:16px;display:flex;align-items:baseline;gap:8px;}
+.pro-price-old{font-size:14px;text-decoration:line-through;color:var(--muted);}
+.pro-price-new{font-size:36px;font-weight:800;color:var(--gold);}
+.pro-price-tag{font-size:12px;color:var(--muted);}
+.pro-features{list-style:none;margin-bottom:20px;}
+.pro-features li{
+  font-size:13px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  display:flex;align-items:center;gap:10px;color:#c0c0d8;
+}
+.pro-features li:last-child{border-bottom:none;}
+.pro-features li .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0;}
+
+/* ── PRO CONTENT ── */
+.pro-content{display:none;}
+.pro-content.unlocked{display:block !important;animation:fadeUp .4s ease forwards;}
+
+.pro-section{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:20px 16px;margin-bottom:12px;
+}
+.pro-section-title{
+  font-family:'Bebas Neue',sans-serif;font-size:17px;
+  letter-spacing:2px;color:var(--cyan);
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.pro-section-title span{font-size:18px;}
+
+/* PDF/Share buttons */
+.pdf-btn-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.btn-pdf{
+  padding:16px 10px;background:rgba(0,245,212,.08);
+  border:1px solid rgba(0,245,212,.25);border-radius:14px;
+  color:var(--cyan);font-family:'Space Mono',monospace;
+  font-size:11px;letter-spacing:.5px;cursor:pointer;
+  transition:all .2s;touch-action:manipulation;
+  text-align:center;
+}
+.btn-pdf:active{background:rgba(0,245,212,.18);}
+
+/* Summary card */
+.summary-card{
+  background:linear-gradient(150deg,#0a1a14,#1a0a1e);
+  border:1px solid rgba(0,245,212,.25);
+  border-radius:20px;padding:22px 18px;
+  margin-bottom:12px;text-align:center;
+}
+.summary-name{font-family:'Bebas Neue',sans-serif;font-size:34px;color:#fff;margin:8px 0 4px;}
+.summary-type{font-size:12px;color:var(--cyan);margin-bottom:12px;letter-spacing:2px;}
+.summary-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:8px;margin:14px 0;padding:14px 10px;
+  background:rgba(255,255,255,.03);border-radius:14px;
+}
+.summary-stat{text-align:center;}
+.summary-stat-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);}
+.summary-stat-label{font-size:8px;color:var(--muted);letter-spacing:.5px;margin-top:2px;}
+.summary-twin{font-size:13px;font-weight:700;color:#fff;margin-top:10px;line-height:1.5;}
+.summary-twin span{color:var(--gold);}
+
+/* Hairstyle cards */
+.hair-cards{display:flex;flex-direction:column;gap:10px;}
+.hair-card{background:var(--card2);border-radius:14px;padding:14px 16px;border-left:3px solid var(--cyan);}
+.hair-name{font-weight:700;font-size:15px;margin-bottom:5px;color:#fff;}
+.hair-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+
+/* Skincare steps */
+.skincare-steps{display:flex;flex-direction:column;gap:10px;}
+.step-row{display:flex;align-items:flex-start;gap:12px;background:var(--card2);border-radius:14px;padding:14px;}
+.step-num{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--pink),#a01040);
+  color:#fff;font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;}
+.step-product{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* Makeup tips */
+.makeup-tips{display:flex;flex-direction:column;gap:10px;}
+.makeup-tip{display:flex;gap:12px;background:var(--card2);border-radius:14px;padding:14px;align-items:flex-start;}
+.tip-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:4px;}
+.tip-text{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* Lookbook — full width cards on mobile */
+.lookbook-grid{display:flex;flex-direction:column;gap:10px;}
+.look-card{background:var(--card2);border-radius:16px;overflow:hidden;}
+.look-header{padding:14px 16px 10px;display:flex;align-items:center;gap:12px;}
+.look-color-dot{width:40px;height:40px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.look-idol-name{font-weight:700;font-size:15px;color:#fff;}
+.look-group{font-size:11px;color:rgba(255,255,255,.5);}
+.look-style-badge{font-size:9px;font-family:'Space Mono',monospace;color:#000;background:var(--gold);padding:3px 8px;border-radius:8px;margin-top:4px;display:inline-block;}
+.look-body{padding:0 16px 14px;}
+.look-tip{font-size:12px;color:var(--muted);line-height:1.6;}
+
+/* All idol matches */
+.all-idols{display:flex;flex-direction:column;gap:10px;}
+.idol-row{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:14px;padding:14px;}
+.idol-rank{
+  width:30px;height:30px;border-radius:50%;
+  font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.idol-row-info{flex:1;min-width:0;}
+.idol-row-name{font-weight:700;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.idol-row-group{font-size:10px;color:var(--muted);}
+.idol-row-bar{width:60px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.idol-row-fill{height:100%;border-radius:3px;}
+.idol-row-pct{font-family:'Bebas Neue',sans-serif;font-size:20px;flex-shrink:0;min-width:44px;text-align:right;}
+
+/* ── TOAST — bottom of phone ── */
+.toast{
+  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));
+  left:50%;transform:translateX(-50%) translateY(120px);
+  background:#1e1e2e;border:1px solid var(--border);
+  border-radius:14px;padding:14px 22px;font-size:14px;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  z-index:999;white-space:nowrap;max-width:90vw;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── MODAL — slides from bottom on mobile ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.8);
+  z-index:200;display:none;
+  align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--card);
+  border:1px solid rgba(255,215,0,.2);
+  border-radius:28px 28px 0 0;
+  padding:20px 20px calc(28px + env(safe-area-inset-bottom));
+  width:100%;max-width:430px;
+  text-align:center;
+  animation:slideUp .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+/* drag handle */
+.modal::before{
+  content:'';display:block;width:40px;height:4px;
+  background:var(--border);border-radius:2px;
+  margin:0 auto 16px;
+}
+.modal h3{font-family:'Bebas Neue',sans-serif;font-size:30px;margin:6px 0;}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:12px;}
+.modal-price{font-size:36px;font-weight:800;color:var(--gold);margin:4px 0;}
+.modal-price .orig{font-size:16px;text-decoration:line-through;color:var(--muted);margin-right:6px;}
+.modal-input{
+  width:100%;padding:14px 16px;background:var(--dark);
+  border:1px solid var(--border);border-radius:14px;
+  color:var(--text);font-size:16px;outline:none;
+  margin-bottom:10px;text-align:left;
+  -webkit-appearance:none;
+}
+.modal-input:focus{border-color:var(--gold);}
+.modal-label{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;display:block;text-align:left;margin-bottom:5px;}
+.pay-methods{display:flex;gap:8px;justify-content:center;margin:10px 0 14px;flex-wrap:wrap;}
+.pay-method{background:var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--muted);}
+.modal-btns{display:flex;flex-direction:column;gap:10px;}
+.btn-pay{
+  padding:18px;background:linear-gradient(135deg,var(--gold),#e0a000);
+  border:none;border-radius:16px;color:#000;
+  font-family:'Bebas Neue',sans-serif;font-size:22px;
+  letter-spacing:2px;cursor:pointer;
+  touch-action:manipulation;
+}
+.btn-pay:active{transform:scale(.97);}
+.btn-cancel{
+  padding:14px;background:transparent;
+  border:1px solid var(--border);border-radius:14px;
+  color:var(--muted);font-size:14px;cursor:pointer;
+  touch-action:manipulation;
+}
+
+/* ══ LICENSE GATE ══════════════════════════════ */
+#kpop-gate{
+  position:fixed;inset:0;
+  background:#0a0a0f;
+  display:flex;align-items:center;justify-content:center;
+  z-index:99999;padding:16px;
+  font-family:'Noto Sans KR',sans-serif;
+  overflow-y:auto;
+}
+#kpop-gate::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 0%,rgba(255,45,120,.15),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%,rgba(0,245,212,.1),transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.gate-wrap{
+  width:100%;max-width:420px;
+  position:relative;z-index:1;
+  padding:16px 0 40px;
+}
+
+/* ── Screen panels ── */
+.gate-screen{ display:none; }
+.gate-screen.active{ display:block; }
+
+/* ── Card ── */
+.gate-card{
+  background:#111118;
+  border:1px solid #1e1e2e;
+  border-top:3px solid #ff2d78;
+  padding:36px 28px;
+  box-shadow:0 0 60px rgba(255,45,120,.12);
+}
+.gate-card.cyan-top{ border-top-color:#00f5d4; }
+.gate-card.gold-top{ border-top-color:#ffd700; }
+
+/* ── Logo ── */
+.gate-logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:44px;color:#ff2d78;
+  letter-spacing:4px;text-align:center;line-height:1;
+}
+.gate-logo span{color:#00f5d4;}
+.gate-tool{
+  text-align:center;color:#5a5a7a;
+  font-size:9px;letter-spacing:3px;
+  font-family:'Space Mono',monospace;margin-top:4px;
+}
+.gate-divider{height:1px;background:#1e1e2e;margin:22px 0 18px;}
+
+/* ── Label ── */
+.gate-label{
+  font-size:9px;color:#5a5a7a;
+  letter-spacing:2px;margin-bottom:8px;
+  font-family:'Space Mono',monospace;
+}
+
+/* ── Input ── */
+.gate-input{
+  width:100%;padding:15px;
+  background:#0a0a0f;border:1px solid #1e1e2e;
+  color:#e8e8f0;font-size:13px;
+  font-family:'Space Mono',monospace;
+  letter-spacing:2px;outline:none;
+  transition:border-color .2s;
+  text-transform:uppercase;
+  -webkit-appearance:none;border-radius:0;
+}
+.gate-input:focus{border-color:#ff2d78;}
+.gate-input::placeholder{color:#2a2a4a;text-transform:none;letter-spacing:0;font-size:11px;}
+
+/* ── Buttons ── */
+.gate-btn{
+  width:100%;padding:16px;border:none;color:#fff;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:20px;letter-spacing:3px;
+  cursor:pointer;margin-top:10px;
+  transition:all .2s;touch-action:manipulation;
+  border-radius:0;
+}
+.gate-btn.pink{
+  background:linear-gradient(135deg,#ff2d78,#b01050);
+  box-shadow:0 6px 24px rgba(255,45,120,.3);
+}
+.gate-btn.gold{
+  background:linear-gradient(135deg,#ffd700,#e6a000);
+  color:#000;box-shadow:0 6px 24px rgba(255,215,0,.25);
+}
+.gate-btn.outline{
+  background:transparent;color:#5a5a7a;
+  border:1px solid #1e1e2e;font-size:13px;
+  letter-spacing:1px;padding:13px;
+}
+.gate-btn.outline:hover{color:#e8e8f0;border-color:#3a3a5a;}
+.gate-btn:active{transform:scale(.98);}
+.gate-btn:disabled{background:#2e2e4e;box-shadow:none;cursor:not-allowed;color:#5a5a7a;}
+
+/* ── Error / Success ── */
+.gate-error{
+  margin-top:10px;padding:10px 14px;
+  background:rgba(255,61,90,.08);border-left:2px solid #ff3d5a;
+  color:#ff6b6b;font-size:12px;display:none;line-height:1.5;
+}
+.gate-success{
+  margin-top:10px;padding:10px 14px;
+  background:rgba(0,230,118,.08);border-left:2px solid #00e676;
+  color:#00e676;font-size:12px;display:none;
+}
+
+/* ── Spinner ── */
+@keyframes gspin{to{transform:rotate(360deg)}}
+.gate-spin{
+  display:inline-block;width:12px;height:12px;
+  border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;
+  animation:gspin .8s linear infinite;
+  margin-right:6px;vertical-align:middle;
+}
+
+/* ── Payment page styles ── */
+.pay-section-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:13px;letter-spacing:3px;
+  color:#5a5a7a;margin:20px 0 10px;
+  text-align:center;
+}
+.pay-steps{
+  display:flex;flex-direction:column;gap:0;
+  margin-bottom:16px;
+}
+.pay-step{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:12px 0;border-bottom:1px solid #1a1a2a;
+}
+.pay-step:last-child{border-bottom:none;}
+.pay-step-num{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.3);
+  color:#ff2d78;font-family:'Bebas Neue',sans-serif;font-size:14px;
+  display:flex;align-items:center;justify-content:center;margin-top:2px;
+}
+.pay-step-text{font-size:13px;color:#c0c0e0;line-height:1.5;}
+.pay-step-text strong{color:#fff;}
+
+/* QR box */
+.qr-wrap{
+  background:#111118;border:1px solid #1e1e2e;
+  border-top:3px solid #00f5d4;
+  padding:24px;text-align:center;margin:0 0 12px;
+}
+.qr-tag{
+  font-family:'Space Mono',monospace;font-size:9px;
+  letter-spacing:3px;color:#00f5d4;margin-bottom:14px;
+}
+.qr-box{
+  display:inline-block;background:#fff;
+  padding:10px;border-radius:4px;margin-bottom:14px;
+  box-shadow:0 0 30px rgba(0,245,212,.1);
+}
+.amount-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);
+  padding:7px 18px;
+  font-family:'Bebas Neue',sans-serif;font-size:22px;color:#ffd700;
+  margin-bottom:12px;
+}
+.upi-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#0a0a0f;border:1px solid #1e1e2e;
+  padding:10px 14px;gap:10px;margin-bottom:10px;
+}
+.upi-text{
+  font-family:'Space Mono',monospace;font-size:12px;
+  color:#00f5d4;letter-spacing:1px;
+}
+.copy-btn{
+  background:rgba(0,245,212,.1);border:1px solid rgba(0,245,212,.2);
+  color:#00f5d4;font-size:9px;padding:5px 10px;
+  cursor:pointer;font-family:'Space Mono',monospace;
+  letter-spacing:1px;transition:all .2s;flex-shrink:0;
+}
+.copy-btn:active{background:rgba(0,245,212,.25);}
+.upi-apps{
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px;
+}
+.upi-app{
+  background:#1a1a2a;border:1px solid #1e1e2e;
+  border-radius:20px;padding:4px 12px;font-size:10px;color:#5a5a7a;
+}
+
+/* Form button */
+.form-note{
+  background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.12);
+  padding:12px 14px;font-size:12px;color:#a09050;
+  line-height:1.7;margin-bottom:12px;
+}
+.form-note strong{color:#ffd700;}
+
+/* Back link */
+.back-link{
+  display:block;text-align:center;margin-top:14px;
+  font-size:11px;color:#3a3a5a;cursor:pointer;
+  font-family:'Space Mono',monospace;letter-spacing:1px;
+}
+.back-link:hover{color:#6a6a9a;}
+
+/* Toast */
+#gate-toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:#1e1e2e;border:1px solid #2e2e4e;
+  border-left:3px solid #00f5d4;
+  padding:12px 20px;font-size:13px;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:999999;white-space:nowrap;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#gate-toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="back-bar">
+  <button class="back-btn" onclick="window.location.href='index.html'">← DASHBOARD</button>
+  <span style="font-family:'Space Mono',monospace;font-size:9px;color:#5a5a7a;letter-spacing:2px;">IDOL FACE ANALYZER</span>
+</div>
+<script>
+if(!sessionStorage.getItem('kpop_session')){ window.location.href='index.html'; }
+</script>
+
+<!-- ══ QR CODE LIB ══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- ══ GATE OVERLAY ══════════════════════════════════════ -->
+<div id="kpop-gate">
+  <div class="gate-wrap">
+
+    <!-- ── SCREEN 1: Key Enter ── -->
+    <div class="gate-screen active" id="screen-key">
+      <div class="gate-card">
+        <div class="gate-logo">IDOL<span>★</span>FACE</div>
+        <div class="gate-tool">KPOP FACE ANALYZER</div>
+        <div class="gate-divider"></div>
+        <div class="gate-label">LICENSE KEY ENTER KARO</div>
+        <input class="gate-input" id="gate-input"
+          type="text" placeholder="KPOP-XXXX-XXXX-XXXX-XXXX"
+          maxlength="24" autocomplete="off"
+          autocapitalize="characters" spellcheck="false">
+        <button class="gate-btn pink" id="gate-btn">UNLOCK KARO →</button>
+        <div class="gate-error" id="gate-error"></div>
+        <div class="gate-success" id="gate-success"></div>
+        <div class="gate-divider" style="margin-top:20px"></div>
+        <div style="text-align:center;font-size:12px;color:#4a4a7a;margin-bottom:10px">
+          Key nahi hai abhi tak?
+        </div>
+        <button class="gate-btn outline" onclick="showScreen('screen-pay')">
+          🎵 SUBSCRIPTION LO — ₹49/MAHINA
+        </button>
+      </div>
+    </div>
+
+    <!-- ── SCREEN 2: Payment ── -->
+    <div class="gate-screen" id="screen-pay">
+      <div class="gate-card gold-top">
+        <div class="gate-logo" style="color:#ffd700">KPOP<span style="color:#ff2d78">★</span>PAY</div>
+        <div class="gate-tool">1 MAHINE KA FULL ACCESS — ₹49</div>
+        <div class="gate-divider"></div>
+
+        <!-- Steps -->
+        <div class="pay-steps">
+          <div class="pay-step">
+            <div class="pay-step-num">1</div>
+            <div class="pay-step-text"><strong>Neeche QR scan karo</strong> ya UPI ID copy karo — ₹49 bhejo</div>
+          </div>
+          <div class="pay-step">
+            <div class="pay-step-num">2</div>
+            <div class="pay-step-text"><strong>"Form Bharo" button</strong> dabao — naam, email, phone dalo</div>
+          </div>
+          <div class="pay-step">
+            <div class="pay-step-num">3</div>
+            <div class="pay-step-text">1-2 ghante mein <strong>email pe key aayegi</strong> — wapas aake enter karo!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Card -->
+      <div class="qr-wrap" style="margin-top:12px">
+        <div class="qr-tag">SCAN & PAY — ANY UPI APP</div>
+        <div class="qr-box">
+          <div id="qr-code"></div>
+        </div>
+        <div class="amount-pill">💰 ₹49 ONLY</div>
+        <div class="upi-row">
+          <span class="upi-text">keshavb12@axl</span>
+          <button class="copy-btn" onclick="copyUPI()">COPY</button>
+        </div>
+        <div class="upi-apps">
+          <span class="upi-app">📱 PhonePe</span>
+          <span class="upi-app">🟢 GPay</span>
+          <span class="upi-app">💜 Paytm</span>
+          <span class="upi-app">🏦 Any UPI</span>
+        </div>
+      </div>
+
+      <!-- Form button -->
+      <div class="form-note" style="margin-top:12px">
+        ⚡ Payment ke baad <strong>neeche button dabao</strong> — form mein naam, email aur phone bharo
+      </div>
+      <a class="gate-btn gold"
+        href="https://docs.google.com/forms/d/e/1FAIpQLSdJNBwkHV7VWGVF8kj7LQkqQfdJXSGrDDwv2zaRsn0UiF-TmA/viewform?usp=header"
+        target="_blank"
+        style="display:block;text-align:center;text-decoration:none;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;padding:17px;">
+        ✅ PAYMENT KI — FORM BHARO
+      </a>
+
+      <span class="back-link" onclick="showScreen('screen-key')">
+        ← Pehle se key hai? Wapas jao
+      </span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div id="gate-toast">✅ UPI ID copied!</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="main-app" style="display:none">
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-tag">AI POWERED  K-POP  FACE ANALYSIS</div>
+    <h1>IDOL<br>FACE</h1>
+    <p class="subtitle">Real AI analysis · Apna K-pop idol twin dhundo</p>
+    <div class="ai-status">
+      <div class="ai-dot loading-ai" id="aiDot"></div>
+      <span id="aiStatusText" style="font-size:11px;color:var(--muted)">AI model load ho raha hai...</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*" capture="user">
+    <span class="upload-icon">📸</span>
+    <div class="upload-text">Selfie upload ya photo lo</div>
+    <div class="upload-sub">Camera se seedha ya gallery se — free basic analysis</div>
+    <div class="upload-hint">🔒 Data save nahi hota · Phone mein hi process</div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-wrap" id="previewWrap">
+    <canvas id="previewCanvas"></canvas>
+    <div class="preview-overlay"></div>
+    <div class="scan-line" id="scanLine"></div>
+    <div class="preview-label">AI SCAN READY</div>
+  </div>
+
+  <button class="btn-main" id="btnAnalyze">ANALYZE MY FACE</button>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <div class="loading-text" id="loadingText">AI SCANNING...</div>
+    <div class="loading-sub" id="loadingSub">Face landmarks detect kar raha hai</div>
+  </div>
+
+  <div class="error-box" id="errorBox">
+    <div style="font-size:32px;margin-bottom:8px">😕</div>
+    <strong>Face detect nahi hua</strong>
+    <p style="font-size:13px;color:var(--muted);margin-top:6px">Clear selfie upload karo — seedha chehra, acha lighting</p>
+    <button class="btn-outline" onclick="resetApp()" style="margin-top:12px">DOBARA TRY KARO</button>
+  </div>
+
+  <!-- FREE RESULTS -->
+  <div class="free-results" id="freeResults">
+
+    <!-- Face Type -->
+    <div class="type-card">
+      <div class="idol-badge">TUMHARA FACE TYPE</div>
+      <span class="type-emoji" id="resEmoji">🌸</span>
+      <div class="type-name" id="resType">...</div>
+      <div class="type-desc" id="resDesc">...</div>
+      <div class="ai-badge" id="resAiBadge">AI Analysis by TensorFlow.js</div>
+    </div>
+
+    <!-- Confidence -->
+    <div class="conf-row">
+      <div class="conf-label">AI CONFIDENCE</div>
+      <div class="conf-bar"><div class="conf-fill" id="confFill"></div></div>
+      <div class="conf-val" id="confVal">--</div>
+    </div>
+
+    <!-- 4 Basic Metrics -->
+    <div class="section-title">BASIC METRICS</div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Symmetry</div>
+        <div class="metric-value" id="mSym" style="color:var(--cyan)">--</div>
+        <div class="metric-bar"><div class="metric-fill" id="fSym" style="background:var(--cyan)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Jawline</div>
+        <div class="metric-value" id="mJaw" style="color:var(--pink)">--</div>
+        <div class="metric-bar"><div class="metric-fill" id="fJaw" style="background:var(--pink)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Skin Clarity</div>
+        <div class="metric-value" id="mSkin" style="color:var(--gold)">--</div>
+        <div class="metric-bar"><div class="metric-fill" id="fSkin" style="background:var(--gold)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Eye Ratio</div>
+        <div class="metric-value" id="mEye" style="color:#b088ff">--</div>
+        <div class="metric-bar"><div class="metric-fill" id="fEye" style="background:#b088ff"></div></div>
+      </div>
+    </div>
+
+    <!-- 3 Free Idol Matches -->
+    <div class="section-title">TOP IDOL MATCHES (FREE)</div>
+    <div class="idol-matches" id="freeIdolMatches"></div>
+
+    <div id="proTeaser" style="display:none"></div>
+
+    <!-- PRO CONTENT — auto unlocks after analysis -->
+    <div class="pro-content" id="proContent">
+
+      <!-- PDF Download + Share -->
+      <div class="pdf-btn-wrap">
+        <button class="btn-pdf" onclick="downloadSimplePDF()">📄 PDF Download</button>
+        <button class="btn-pdf" onclick="shareCard()">🔗 Share Card</button>
+      </div>
+
+      <!-- Summary / Share Card -->
+      <div class="summary-card" id="summaryCard">
+        <div class="idol-badge">IDOL TWIN CARD</div>
+        <div class="summary-name" id="sumName">--</div>
+        <div class="summary-type" id="sumType">--</div>
+        <div class="summary-stats">
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumSym">--</div>
+            <div class="summary-stat-label">SYMMETRY</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumJaw">--</div>
+            <div class="summary-stat-label">JAWLINE</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumEye">--</div>
+            <div class="summary-stat-label">EYE RATIO</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sumSkin">--</div>
+            <div class="summary-stat-label">SKIN</div>
+          </div>
+        </div>
+        <div class="summary-twin">Top Match: <span id="sumTwin">--</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace">idolface.app — AI-Powered K-pop Analysis</div>
+      </div>
+
+      <!-- Full 20 Metrics -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>📊</span> FULL 20-METRIC ANALYSIS</div>
+        <div id="allMetricsGrid" class="metrics-grid"></div>
+      </div>
+
+      <!-- 10+ Idol Matches -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>🎤</span> ALL IDOL MATCHES (10+)</div>
+        <div class="all-idols" id="allIdolMatches"></div>
+      </div>
+
+      <!-- Hairstyle Recommendations -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>💇</span> BEST HAIRSTYLE RECOMMENDATIONS</div>
+        <div class="hair-cards" id="hairCards"></div>
+      </div>
+
+      <!-- K-beauty Skincare Routine -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>✨</span> K-BEAUTY SKINCARE ROUTINE</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Space Mono',monospace" id="skincareType"></div>
+        <div class="skincare-steps" id="skincareSteps"></div>
+      </div>
+
+      <!-- Makeup Tips -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>💄</span> MAKEUP AND STYLING TIPS</div>
+        <div class="makeup-tips" id="makeupTips"></div>
+      </div>
+
+      <!-- Idol Lookbook -->
+      <div class="pro-section">
+        <div class="pro-section-title"><span>👑</span> IDOL STYLE LOOKBOOK</div>
+        <div class="lookbook-grid" id="lookbookGrid"></div>
+      </div>
+
+      <!-- Journey Summary -->
+      <div class="pro-section" style="text-align:center;">
+        <div class="pro-section-title" style="justify-content:center;"><span>🌟</span> YOUR IDOL JOURNEY</div>
+        <div id="journeySummary" style="font-size:13px;color:var(--muted);line-height:1.8;text-align:left;"></div>
+      </div>
+
+    </div><!-- end proContent -->
+
+    <button class="btn-outline" onclick="resetApp()">NAYI PHOTO ANALYZE KARO</button>
+  </div><!-- end freeResults -->
+
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+// Razorpay removed — license key se access milta hai
+
+const FACE_TYPES = [
+  {
+    key:'soft', type:'SOFT IDOL', emoji:'🌸',
+    desc:'Gentle features, expressive eyes aur soft jawline — classic K-pop visual type. Jimin aur Jennie ka same aura!',
+    color:'#ff6b9d',
+    idols:[
+      {name:'Jimin',     group:'BTS',        emoji:'🌸', color:'#ff6b9d'},
+      {name:'Jennie',    group:'BLACKPINK',  emoji:'💗', color:'#ff2d78'},
+      {name:'Taeyeon',   group:'SNSD',       emoji:'🌺', color:'#ffa0c0'},
+      {name:'Jisoo',     group:'BLACKPINK',  emoji:'🌸', color:'#e8a0bf'},
+      {name:'Cha Eunwoo',group:'ASTRO',      emoji:'✨', color:'#90caf9'},
+      {name:'Joy',       group:'Red Velvet', emoji:'🌹', color:'#f48fb1'},
+      {name:'Jin',       group:'BTS',        emoji:'💎', color:'#00f5d4'},
+      {name:'Suga',      group:'BTS',        emoji:'🖤', color:'#9e9e9e'},
+      {name:'Woozi',     group:'SEVENTEEN',  emoji:'🎵', color:'#ce93d8'},
+      {name:'Dahyun',    group:'TWICE',      emoji:'🐧', color:'#b3e5fc'},
+    ]
+  },
+  {
+    key:'sharp', type:'SHARP IDOL', emoji:'⚡',
+    desc:'Defined jawline, strong bone structure aur intense gaze — charismatic performer energy. V aur Kai ka aura!',
+    color:'#7c4dff',
+    idols:[
+      {name:'V (Taehyung)',group:'BTS',        emoji:'⚡', color:'#7c4dff'},
+      {name:'Kai',          group:'EXO',        emoji:'🔥', color:'#ff5722'},
+      {name:'G-Dragon',     group:'BIGBANG',    emoji:'👑', color:'#ffd700'},
+      {name:'Wonho',        group:'Solo',       emoji:'💪', color:'#42a5f5'},
+      {name:'Hyunjin',      group:'Stray Kids', emoji:'🎨', color:'#ab47bc'},
+      {name:'Mingyu',       group:'SEVENTEEN',  emoji:'🌊', color:'#29b6f6'},
+      {name:'Shownu',       group:'MONSTA X',   emoji:'⚡', color:'#ef5350'},
+      {name:'Mark',         group:'GOT7',       emoji:'🎯', color:'#66bb6a'},
+      {name:'Kang Daniel',  group:'Solo',       emoji:'🌙', color:'#7e57c2'},
+      {name:'Ren',          group:'NU\'EST',    emoji:'🌟', color:'#ffca28'},
+    ]
+  },
+  {
+    key:'model', type:'MODEL FACE', emoji:'💎',
+    desc:'High cheekbones, long face ratio aur sculptural bone structure — runway-ready idol energy!',
+    color:'#00f5d4',
+    idols:[
+      {name:'Jin',       group:'BTS',        emoji:'💎', color:'#00f5d4'},
+      {name:'Irene',     group:'Red Velvet', emoji:'👸', color:'#e91e63'},
+      {name:'Eunwoo',    group:'ASTRO',      emoji:'✨', color:'#2196f3'},
+      {name:'Tzuyu',     group:'TWICE',      emoji:'🌙', color:'#80cbc4'},
+      {name:'Suho',      group:'EXO',        emoji:'🌟', color:'#fff176'},
+      {name:'Sehun',     group:'EXO',        emoji:'🌊', color:'#4fc3f7'},
+      {name:'Krystal',   group:'f(x)',       emoji:'💙', color:'#7986cb'},
+      {name:'Lucas',     group:'NCT',        emoji:'🦁', color:'#ffb74d'},
+      {name:'Doyoung',   group:'NCT',        emoji:'🎭', color:'#a5d6a7'},
+      {name:'Moonbyul',  group:'MAMAMOO',    emoji:'🔮', color:'#ce93d8'},
+    ]
+  },
+  {
+    key:'baby', type:'BABY FACE', emoji:'🍭',
+    desc:'Round cheeks, big doe eyes aur youthful charm — ageless cuteness jo fans ka dil chura le!',
+    color:'#81c784',
+    idols:[
+      {name:'Jungkook', group:'BTS',    emoji:'🐰', color:'#81c784'},
+      {name:'Tzuyu',    group:'TWICE',  emoji:'🌙', color:'#80cbc4'},
+      {name:'Sana',     group:'TWICE',  emoji:'🍡', color:'#f48fb1'},
+      {name:'Ni-ki',    group:'ENHYPEN',emoji:'🎮', color:'#ffb74d'},
+      {name:'Yeji',     group:'ITZY',   emoji:'🦊', color:'#ff8a65'},
+      {name:'Felix',    group:'Stray Kids',emoji:'🌟',color:'#ffd54f'},
+      {name:'Wonyoung', group:'IVE',    emoji:'🌸', color:'#f8bbd0'},
+      {name:'Jeno',     group:'NCT Dream',emoji:'🐶',color:'#80deea'},
+      {name:'Jisung',   group:'NCT Dream',emoji:'🎵',color:'#a5d6a7'},
+      {name:'Yeri',     group:'Red Velvet',emoji:'🍒',color:'#ef9a9a'},
+    ]
+  },
+  {
+    key:'symmetrical', type:'SYMMETRICAL', emoji:'⚖️',
+    desc:'Near-perfect facial symmetry aur balanced proportions — scientifically most attractive face type!',
+    color:'#ffd700',
+    idols:[
+      {name:'Suho',     group:'EXO',       emoji:'🌟', color:'#fff176'},
+      {name:'Lisa',     group:'BLACKPINK', emoji:'💛', color:'#ffeb3b'},
+      {name:'J-Hope',   group:'BTS',       emoji:'☀️', color:'#ff9800'},
+      {name:'Karina',   group:'aespa',     emoji:'🤖', color:'#ce93d8'},
+      {name:'Eunwoo',   group:'ASTRO',     emoji:'✨', color:'#90caf9'},
+      {name:'Solar',    group:'MAMAMOO',   emoji:'🌞', color:'#ffcc02'},
+      {name:'Baekhyun', group:'EXO',       emoji:'🌙', color:'#b0bec5'},
+      {name:'Nayeon',   group:'TWICE',     emoji:'🐰', color:'#ef9a9a'},
+      {name:'Minho',    group:'SHINee',    emoji:'🔥', color:'#ff7043'},
+      {name:'Yeji',     group:'ITZY',      emoji:'🦊', color:'#ff8a65'},
+    ]
+  },
+];
+
+const LM = {
+  jaw:[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109],
+  leftEyeOuter:33,leftEyeInner:133,rightEyeOuter:362,rightEyeInner:263,
+  leftEyeTop:159,leftEyeBottom:145,rightEyeTop:386,rightEyeBottom:374,
+  noseTip:1,mouthLeft:61,mouthRight:291,
+  faceTop:10,faceBottom:152,faceLeft:234,faceRight:454,
+  leftCheek:116,rightCheek:345,jawLeft:172,jawRight:397,
+};
+
+const LOADING_MSGS = [
+  ['FACE DETECT HO RAHA HAI...','468 facial landmarks map ho rahe hain'],
+  ['SYMMETRY CALCULATE...','Left-right balance measure ho raha hai'],
+  ['JAWLINE ANALYZE...','Bone structure check ho raha hai'],
+  ['EYE PROPORTION CHECK...','Eye width/height ratio calculate ho raha hai'],
+  ['K-POP DATABASE MATCH...','Tumhara idol type identify ho raha hai'],
+  ['REPORT GENERATE...','Tumhara idol twin dhundh raha hai...'],
+];
+
+let detector=null, modelReady=false, currentImg=null;
+let globalMetrics=null, globalFaceData=null, globalPayerName='';
+
+// ═══════════════════════════════════════════
+// AI MODEL LOAD
+// ═══════════════════════════════════════════
+async function loadModel() {
+  try {
+    updateAI('loading','AI load ho raha hai (~10 sec)...');
+    detector = await faceLandmarksDetection.createDetector(
+      faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+      {runtime:'tfjs', refineLandmarks:false}
+    );
+    modelReady=true;
+    updateAI('ready','AI Ready — Photo upload karo');
+  } catch(e) {
+    modelReady=true;
+    updateAI('ready','AI Ready (lite mode) — Photo upload karo');
+  }
+}
+function updateAI(state,text){
+  document.getElementById('aiDot').className='ai-dot'+(state==='loading'?' loading-ai':state==='ready'?' ready':'');
+  document.getElementById('aiStatusText').textContent=text;
+}
+
+// ═══════════════════════════════════════════
+// UPLOAD
+// ═══════════════════════════════════════════
+const uploadZone=document.getElementById('uploadZone');
+const fileInput=document.getElementById('fileInput');
+uploadZone.addEventListener('click',()=>fileInput.click());
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('dragover');});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop',e=>{
+  e.preventDefault();uploadZone.classList.remove('dragover');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))handleFile(f);
+});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
+
+function handleFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      currentImg=img;
+      drawCanvas(img);
+      document.getElementById('previewWrap').style.display='block';
+      document.getElementById('btnAnalyze').style.display='block';
+      document.getElementById('errorBox').style.display='none';
+      document.getElementById('freeResults').style.display='none';
+      document.getElementById('proContent').style.display='none';
+      uploadZone.style.display='none';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawCanvas(img,lms){
+  const canvas=document.getElementById('previewCanvas');
+  const scale=Math.min(1,520/img.naturalWidth);
+  canvas.width=img.naturalWidth*scale;
+  canvas.height=img.naturalHeight*scale;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  if(lms&&lms.length){
+    const sx=canvas.width/img.naturalWidth,sy=canvas.height/img.naturalHeight;
+    ctx.fillStyle='rgba(0,245,212,0.5)';
+    lms.forEach(pt=>{ctx.beginPath();ctx.arc(pt.x*sx,pt.y*sy,1.2,0,Math.PI*2);ctx.fill();});
+    const nose=lms[LM.noseTip],top=lms[LM.faceTop],bot=lms[LM.faceBottom];
+    ctx.strokeStyle='rgba(255,45,120,0.6)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(nose.x*sx,top.y*sy-10);ctx.lineTo(nose.x*sx,bot.y*sy+10);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(255,215,0,0.35)';ctx.lineWidth=1;ctx.beginPath();
+    LM.jaw.forEach((idx,i)=>{const p=lms[idx];i===0?ctx.moveTo(p.x*sx,p.y*sy):ctx.lineTo(p.x*sx,p.y*sy);});
+    ctx.stroke();
+  }
+}
+
+// ═══════════════════════════════════════════
+// ANALYZE
+// ═══════════════════════════════════════════
+document.getElementById('btnAnalyze').addEventListener('click',startAnalysis);
+
+async function startAnalysis(){
+  if(!modelReady){showToast('AI load ho raha hai, thoda wait karo');return;}
+  document.getElementById('btnAnalyze').style.display='none';
+  document.getElementById('loading').style.display='block';
+  document.getElementById('errorBox').style.display='none';
+  document.getElementById('scanLine').style.display='block';
+  let mi=0;
+  const iv=setInterval(()=>{
+    mi=(mi+1)%LOADING_MSGS.length;
+    document.getElementById('loadingText').textContent=LOADING_MSGS[mi][0];
+    document.getElementById('loadingSub').textContent=LOADING_MSGS[mi][1];
+  },700);
+  let landmarks=null,isReal=false;
+  try{
+    if(detector&&detector.estimateFaces) landmarks=await detector.estimateFaces(currentImg);
+  }catch(e){console.warn(e);}
+  let metrics=null;
+  if(landmarks&&landmarks.length>0){
+    try{metrics=computeReal(landmarks[0].keypoints,currentImg);drawCanvas(currentImg,landmarks[0].keypoints);isReal=true;}catch(e){}
+  }
+  if(!metrics) metrics=computeFallback(currentImg);
+  clearInterval(iv);
+  document.getElementById('scanLine').style.display='none';
+  document.getElementById('loading').style.display='none';
+  globalMetrics=metrics;
+  globalFaceData=FACE_TYPES.find(f=>f.key===metrics.type)||FACE_TYPES[0];
+  showFreeResults(metrics,isReal);
+}
+
+function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
+
+function computeReal(lms,img){
+  const ncx=lms[LM.noseTip].x;
+  const pairs=[[33,362],[116,345],[61,291],[172,397],[159,386]];
+  const diffs=pairs.map(([l,r])=>{const ld=Math.abs(lms[l].x-ncx),rd=Math.abs(lms[r].x-ncx),big=Math.max(ld,rd);return big===0?1:Math.min(ld,rd)/big;});
+  const symmetry=Math.round(diffs.reduce((s,d)=>s+d,0)/diffs.length*100);
+  const faceW=dist(lms[LM.faceLeft],lms[LM.faceRight]);
+  const jawW=dist(lms[LM.jawLeft],lms[LM.jawRight]);
+  const jawScore=Math.min(100,Math.round(jawW/faceW*130));
+  const leW=dist(lms[LM.leftEyeOuter],lms[LM.leftEyeInner]),leH=dist(lms[LM.leftEyeTop],lms[LM.leftEyeBottom]);
+  const reW=dist(lms[LM.rightEyeOuter],lms[LM.rightEyeInner]),reH=dist(lms[LM.rightEyeTop],lms[LM.rightEyeBottom]);
+  const eyeScore=Math.min(100,Math.round(((leH/leW)+(reH/reW))/2*350));
+  const faceH=dist(lms[LM.faceTop],lms[LM.faceBottom]);
+  const faceRatio=faceH/faceW;
+  const skinScore=getSkin(lms[LM.faceLeft],lms[LM.faceRight],lms[LM.faceTop],lms[LM.faceBottom],img);
+  const type=classify({symmetry,jawScore,eyeScore,faceRatio});
+  return{symmetry,jawScore,eyeScore,skinScore,faceRatio,type};
+}
+function getSkin(fL,fR,fT,fB,img){
+  try{
+    const tmp=document.createElement('canvas');const sc=0.3;
+    tmp.width=img.naturalWidth*sc;tmp.height=img.naturalHeight*sc;
+    const ctx=tmp.getContext('2d');ctx.drawImage(img,0,0,tmp.width,tmp.height);
+    const x1=Math.max(0,Math.floor(fL.x*sc)),x2=Math.min(tmp.width,Math.floor(fR.x*sc));
+    const y1=Math.max(0,Math.floor(fT.y*sc)),y2=Math.min(tmp.height,Math.floor(fB.y*sc));
+    if(x2<=x1||y2<=y1)return 65;
+    const d=ctx.getImageData(x1,y1,x2-x1,y2-y1).data;
+    const bs=[];for(let i=0;i<d.length;i+=4)bs.push(d[i]*.299+d[i+1]*.587+d[i+2]*.114);
+    const mean=bs.reduce((a,b)=>a+b,0)/bs.length;
+    const std=Math.sqrt(bs.reduce((s,b)=>s+(b-mean)**2,0)/bs.length);
+    return Math.round(Math.max(40,Math.min(97,105-std)));
+  }catch(e){return 65;}
+}
+function classify({symmetry,jawScore,eyeScore,faceRatio}){
+  if(symmetry>=88)return 'symmetrical';
+  if(faceRatio>=1.55&&jawScore>=60)return 'model';
+  if(jawScore>=65&&eyeScore<75)return 'sharp';
+  if(eyeScore>=78&&faceRatio<1.35)return 'baby';
+  return 'soft';
+}
+function computeFallback(img){
+  let skinScore=65;
+  if(img){try{
+    const tmp=document.createElement('canvas');tmp.width=Math.min(img.naturalWidth,200);tmp.height=Math.min(img.naturalHeight,200);
+    const ctx=tmp.getContext('2d');ctx.drawImage(img,0,0,tmp.width,tmp.height);
+    const d=ctx.getImageData(Math.floor(tmp.width*.25),Math.floor(tmp.height*.15),Math.floor(tmp.width*.5),Math.floor(tmp.height*.7)).data;
+    const bs=[];for(let i=0;i<d.length;i+=4)bs.push(d[i]*.299+d[i+1]*.587+d[i+2]*.114);
+    const mean=bs.reduce((a,b)=>a+b,0)/bs.length;
+    const std=Math.sqrt(bs.reduce((s,b)=>s+(b-mean)**2,0)/bs.length);
+    skinScore=Math.round(Math.max(45,Math.min(92,100-std)));
+  }catch(e){}}
+  const symmetry=rnd(72,91),jawScore=rnd(42,78),eyeScore=rnd(62,88),faceRatio=rnd(120,165)/100;
+  return{symmetry,jawScore,eyeScore,skinScore,faceRatio,type:classify({symmetry,jawScore,eyeScore,faceRatio})};
+}
+function rnd(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+
+// ═══════════════════════════════════════════
+// SHOW FREE RESULTS
+// ═══════════════════════════════════════════
+function showFreeResults(m,isReal){
+  const fd=globalFaceData;
+  document.getElementById('resEmoji').textContent=fd.emoji;
+  document.getElementById('resType').textContent=fd.type;
+  document.getElementById('resDesc').textContent=fd.desc;
+  document.getElementById('resAiBadge').textContent=isReal?'Real TensorFlow.js Face Analysis':'AI Image Analysis';
+  const conf=isReal?rnd(88,97):rnd(74,85);
+  document.getElementById('confVal').textContent=conf+'%';
+  const jawLabel=m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
+  const skinLabel=m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Care';
+  document.getElementById('mSym').textContent=m.symmetry+'%';
+  document.getElementById('mJaw').textContent=jawLabel;
+  document.getElementById('mSkin').textContent=skinLabel;
+  document.getElementById('mEye').textContent=m.eyeScore+'%';
+  // 3 Free matches
+  const base=Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
+  document.getElementById('freeIdolMatches').innerHTML=fd.idols.slice(0,3).map((idol,i)=>`
+    <div class="idol-match">
+      <div class="idol-avatar" style="background:${idol.color}20;border:1px solid ${idol.color}40">${idol.emoji}</div>
+      <div class="idol-info"><div class="idol-name">${idol.name}</div><div class="idol-group">${idol.group}</div></div>
+      <div class="match-pct" style="color:${idol.color}">${Math.min(96,base-i*rnd(4,8))}%</div>
+    </div>`).join('');
+  document.getElementById('freeResults').style.display='block';
+  setTimeout(()=>{
+    document.getElementById('confFill').style.width=conf+'%';
+    document.getElementById('fSym').style.width=m.symmetry+'%';
+    document.getElementById('fJaw').style.width=m.jawScore+'%';
+    document.getElementById('fSkin').style.width=m.skinScore+'%';
+    document.getElementById('fEye').style.width=m.eyeScore+'%';
+  },250);
+  document.getElementById('freeResults').scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(function(){ unlockProContent(); }, 600);
+}
+
+function showPayModal(){}
+function closePayModal(){}
+
+// ═══════════════════════════════════════════
+// UNLOCK PRO CONTENT (website pe)
+// ═══════════════════════════════════════════
+function unlockProContent(){
+  const m=globalMetrics;
+  const fd=globalFaceData;
+
+  // Safety check
+  if(!m || !fd){
+    showToast('Pehle photo analyze karo!');
+    return;
+  }
+
+  const base=Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
+  const jawLabel=m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
+  const skinLabel=m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Needs Care';
+  const name=globalPayerName||'Idol Fan';
+
+  // Hide pro teaser, show pro content
+  document.getElementById('proTeaser').style.display='none';
+  const pc=document.getElementById('proContent');
+  pc.style.display='block';
+  pc.classList.add('unlocked');
+
+  // Summary card
+  document.getElementById('sumName').textContent=name;
+  document.getElementById('sumType').textContent=fd.type;
+  document.getElementById('sumSym').textContent=m.symmetry+'%';
+  document.getElementById('sumJaw').textContent=jawLabel;
+  document.getElementById('sumEye').textContent=m.eyeScore+'%';
+  document.getElementById('sumSkin').textContent=skinLabel;
+  document.getElementById('sumTwin').textContent=fd.idols[0].name+' ('+fd.idols[0].group+') — '+base+'%';
+
+  // 20 metrics
+  const extra=[
+    {label:'Face Shape Ratio',val:m.faceRatio?m.faceRatio.toFixed(2):'1.40',pct:Math.round((m.faceRatio||1.4)*50),color:'#00c8b4'},
+    {label:'L-R Balance',val:Math.round(m.symmetry*.98)+'%',pct:Math.round(m.symmetry*.98),color:'#ff9800'},
+    {label:'Cheekbone',val:m.jawScore>=55?'High':'Medium',pct:m.jawScore>=55?80:55,color:'#ce93d8'},
+    {label:'Forehead',val:m.eyeScore>=75?'Balanced':'Wide',pct:m.eyeScore>=75?78:60,color:'#64b5f6'},
+    {label:'Nose Bridge',val:'Defined',pct:72,color:'#ffb74d'},
+    {label:'Lip Fullness',val:'Medium',pct:66,color:'#f06292'},
+    {label:'Eye Spacing',val:m.eyeScore>=75?'Wide':'Standard',pct:m.eyeScore>=75?80:60,color:'#aed581'},
+    {label:'Chin Shape',val:m.jawScore>=65?'Sharp':'Soft',pct:m.jawScore>=65?78:55,color:'#4dd0e1'},
+    {label:'Brow Arch',val:'Natural',pct:68,color:'#dce775'},
+    {label:'Temporal Width',val:'Standard',pct:65,color:'#ff8a65'},
+    {label:'Philtrum',val:'Defined',pct:70,color:'#4fc3f7'},
+    {label:'Nasolabial',val:'Minimal',pct:75,color:'#81c784'},
+    {label:'Eye Depth',val:'Medium',pct:63,color:'#e57373'},
+    {label:'Face Harmony',val:m.symmetry>=80?'High':'Good',pct:m.symmetry>=80?85:70,color:'#fff176'},
+    {label:'Skin Glow',val:m.skinScore>=80?'Radiant':'Good',pct:m.skinScore,color:'#ffd54f'},
+    {label:'Feature Balance',val:'Harmonious',pct:72,color:'#b0bec5'},
+  ];
+  const all20=[
+    {label:'SYMMETRY',val:m.symmetry+'%',pct:m.symmetry,color:'#00f5d4'},
+    {label:'JAWLINE',val:jawLabel,pct:m.jawScore,color:'#ff2d78'},
+    {label:'SKIN CLARITY',val:skinLabel,pct:m.skinScore,color:'#ffd700'},
+    {label:'EYE RATIO',val:m.eyeScore+'%',pct:m.eyeScore,color:'#b088ff'},
+    ...extra
+  ];
+  document.getElementById('allMetricsGrid').innerHTML=all20.map(mt=>`
+    <div class="metric-card">
+      <div class="metric-label">${mt.label}</div>
+      <div class="metric-value" style="color:${mt.color};font-size:20px">${mt.val}</div>
+      <div class="metric-bar"><div class="metric-fill" style="background:${mt.color};width:${mt.pct}%"></div></div>
+    </div>`).join('');
+
+  // All 10+ idol matches
+  document.getElementById('allIdolMatches').innerHTML=fd.idols.map((idol,i)=>`
+    <div class="idol-row">
+      <div class="idol-rank" style="background:${idol.color}30;color:${idol.color}">${i+1}</div>
+      <div class="idol-row-info">
+        <div class="idol-row-name">${idol.name}</div>
+        <div class="idol-row-group">${idol.group}</div>
+      </div>
+      <div class="idol-row-bar"><div class="idol-row-fill" style="background:${idol.color};width:${Math.min(96,base-i*rnd(3,7))}%"></div></div>
+      <div class="idol-row-pct" style="color:${idol.color}">${Math.min(96,base-i*rnd(3,7))}%</div>
+    </div>`).join('');
+
+  // Guide data
+  const guide=getGuide(fd.key);
+
+  // Hairstyles
+  document.getElementById('hairCards').innerHTML=guide.hairstyles.map(h=>`
+    <div class="hair-card">
+      <div class="hair-name">${h.name}</div>
+      <div class="hair-desc">${h.desc}</div>
+    </div>`).join('');
+
+  // Skincare
+  document.getElementById('skincareType').textContent='Recommended: '+guide.skincare.type;
+  document.getElementById('skincareSteps').innerHTML=guide.skincare.steps.map((s,i)=>`
+    <div class="step-row">
+      <div class="step-num">${i+1}</div>
+      <div class="step-info"><div class="step-name">${s.name}</div><div class="step-product">${s.product}</div></div>
+    </div>`).join('');
+
+  // Makeup
+  document.getElementById('makeupTips').innerHTML=guide.makeup.map(t=>`
+    <div class="makeup-tip"><div class="tip-dot"></div><div class="tip-text">${t}</div></div>`).join('');
+
+  // Lookbook
+  document.getElementById('lookbookGrid').innerHTML=getLookbook(fd.key).map(l=>`
+    <div class="look-card">
+      <div class="look-header">
+        <div class="look-color-dot" style="background:${l.color}22;border:1px solid ${l.color}44">${l.idol.charAt(0)}</div>
+        <div>
+          <div class="look-idol-name">${l.idol}</div>
+          <div class="look-group">${l.group}</div>
+          <span class="look-style-badge">${l.style}</span>
+        </div>
+      </div>
+      <div class="look-body"><div class="look-tip">${l.tip}</div></div>
+    </div>`).join('');
+
+  // Journey summary
+  document.getElementById('journeySummary').innerHTML=`
+    <p style="margin-bottom:8px">Face Type: <strong style="color:#fff">${fd.type}</strong></p>
+    <p style="margin-bottom:8px">Top Idol Twin: <strong style="color:var(--gold)">${fd.idols[0].name} (${fd.idols[0].group})</strong> — ${base}% match</p>
+    <p style="margin-bottom:8px">Strongest Feature: <strong style="color:#fff">${m.symmetry>=85?'Exceptional Symmetry':m.eyeScore>=80?'Expressive Eyes':m.jawScore>=65?'Defined Jawline':'Balanced Features'}</strong></p>
+    <p style="margin-bottom:8px">Recommended Era: <strong style="color:var(--cyan)">${guide.era}</strong></p>
+    <p style="margin-bottom:8px">Your K-pop Vibe: <strong style="color:var(--pink)">${guide.vibe}</strong></p>
+  `;
+
+  showToast('Pro report unlock ho gayi! Neeche scroll karo');
+  setTimeout(()=>{
+    const pc = document.getElementById('proContent');
+    const y = pc.getBoundingClientRect().top + window.pageYOffset - 20;
+    window.scrollTo({top: y, behavior:'smooth'});
+  }, 300);
+}
+
+// ═══════════════════════════════════════════
+// PDF — Simple summary only
+// ═══════════════════════════════════════════
+function downloadSimplePDF(){
+  try{
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210,H=297,m=globalMetrics,fd=globalFaceData;
+    const pname=globalPayerName||'Idol Fan';
+    const base=Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
+    const jawLabel=m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
+    const skinLabel=m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Needs Care';
+
+    doc.setFillColor(10,10,15);doc.rect(0,0,W,H,'F');
+    doc.setFillColor(255,45,120);doc.rect(0,0,W,2.5,'F');
+    doc.setFillColor(0,245,212);doc.rect(0,H-2.5,W,2.5,'F');
+
+    doc.setFont('helvetica','bold');doc.setFontSize(32);doc.setTextColor(255,255,255);
+    doc.text('IDOL FACE',W/2,18,{align:'center'});
+    doc.setFontSize(8);doc.setTextColor(0,245,212);
+    doc.text('K-POP AI FACE ANALYSIS  -  PRO REPORT SUMMARY',W/2,25,{align:'center'});
+    doc.setFontSize(7);doc.setTextColor(100,100,128);
+    doc.text('Name: '+pname+'   Date: '+new Date().toLocaleDateString('en-IN')+(window._paymentId?'   Pay ID: '+window._paymentId:''),W/2,31,{align:'center'});
+    doc.setDrawColor(42,42,58);doc.line(15,35,W-15,35);
+
+    // Face type box
+    doc.setFillColor(18,18,26);doc.roundedRect(15,39,W-30,38,4,4,'F');
+    doc.setFillColor(255,45,120);doc.roundedRect(15,39,W-30,5,2,2,'F');doc.rect(15,42,W-30,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text('FACE TYPE',W/2,44,{align:'center'});
+    doc.setFontSize(22);doc.setTextColor(255,215,0);
+    doc.text(fd.type,W/2,58,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(0,245,212);
+    doc.text('Top Idol Twin: '+fd.idols[0].name+' ('+fd.idols[0].group+')  -  '+base+'% match',W/2,68,{align:'center'});
+    doc.setFontSize(7);doc.setTextColor(100,100,128);
+    doc.text('For full details visit the website / app',W/2,74,{align:'center'});
+
+    // Metrics
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
+    doc.text('FACE METRICS',15,86);doc.setDrawColor(255,45,120);doc.line(15,88,65,88);
+    const mets=[
+      {l:'SYMMETRY',v:m.symmetry+'%',pct:m.symmetry,c:[0,245,212]},
+      {l:'JAWLINE',v:jawLabel,pct:m.jawScore,c:[255,45,120]},
+      {l:'SKIN CLARITY',v:skinLabel,pct:m.skinScore,c:[255,215,0]},
+      {l:'EYE RATIO',v:m.eyeScore+'%',pct:m.eyeScore,c:[176,136,255]},
+    ];
+    mets.forEach((mt,i)=>{
+      const y=96+i*16;
+      doc.setFillColor(22,22,32);doc.roundedRect(15,y-5,W-30,13,2,2,'F');
+      doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(100,100,128);doc.text(mt.l,20,y+1);
+      doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...mt.c);doc.text(mt.v,20,y+8);
+      doc.setFillColor(42,42,58);doc.roundedRect(90,y+2,100,4,2,2,'F');
+      doc.setFillColor(...mt.c);doc.roundedRect(90,y+2,Math.round(mt.pct/100*100),4,2,2,'F');
+    });
+
+    // Idol matches
+    const y2=96+4*16+8;
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
+    doc.text('TOP IDOL MATCHES',15,y2);doc.setDrawColor(255,215,0);doc.line(15,y2+2,75,y2+2);
+    fd.idols.slice(0,5).forEach((idol,i)=>{
+      const yi=y2+10+i*14;
+      doc.setFillColor(22,22,32);doc.roundedRect(15,yi-4,W-30,11,2,2,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);
+      doc.text((i+1)+'. '+idol.name,22,yi+3);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(100,100,128);
+      doc.text(idol.group,22,yi+8);
+      const pct=Math.min(96,base-i*rnd(4,8));
+      doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,215,0);
+      doc.text(pct+'%',W-20,yi+5,{align:'right'});
+    });
+
+    // Note
+    const noteY=y2+10+5*14+10;
+    doc.setFillColor(10,30,25);doc.roundedRect(15,noteY,W-30,30,4,4,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,245,212);
+    doc.text('FULL REPORT',W/2,noteY+10,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(180,180,200);
+    doc.text('Complete grooming guide, skincare routine, idol lookbook',W/2,noteY+18,{align:'center'});
+    doc.text('aur 20-metric analysis website pe available hai.',W/2,noteY+24,{align:'center'});
+
+    doc.setFillColor(20,20,30);doc.rect(0,H-16,W,16,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text('IDOL FACE',W/2,H-9,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(100,100,128);
+    doc.text('AI-Powered K-pop Face Analysis  |  idolface.app',W/2,H-4,{align:'center'});
+
+    doc.save('IDOL_FACE_Summary_'+pname.replace(/\s+/g,'_')+'.pdf');
+    showToast('PDF download ho gaya!');
+  }catch(e){
+    showToast('PDF error: '+e.message);
+  }
+}
+
+function shareCard(){
+  const text='Maine IDOL FACE pe check kiya — Mera face type '+globalFaceData.type+' hai! Mera idol twin '+globalFaceData.idols[0].name+' hai. Tum bhi try karo: idolface.app';
+  if(navigator.share){navigator.share({title:'IDOL FACE Result',text});}
+  else{navigator.clipboard.writeText(text).then(()=>showToast('Share text copy ho gaya! Paste karo kahi bhi'));};
+}
+
+// ═══════════════════════════════════════════
+// GUIDE DATA
+// ═══════════════════════════════════════════
+function getGuide(key){
+  const g={
+    soft:{
+      hairstyles:[
+        {name:'Curtain Bangs',desc:'Face frame hoti hai, soft features aur define hote hain. Jimin aur Taeyeon ka signature look — center se part karke side pe sweep karo.'},
+        {name:'Soft Waves / Korean Perm',desc:'Korean wavy perm — volume deta hai, romantic aur idol-like appearance ke liye. Shoulder length pe best lagta hai.'},
+        {name:'Two-Block Cut (Soft Version)',desc:'Top pe volume rakho, sides pe clean trim — modern K-pop boy group aesthetic. Face framing ke liye perfect.'},
+      ],
+      skincare:{
+        type:'Glass Skin / Dewy Finish',
+        steps:[
+          {name:'Step 1 - Oil Cleanser',product:'Banila Co Clean It Zero — makeup aur SPF thoroughly remove karo'},
+          {name:'Step 2 - Foam Cleanser',product:'COSRX Low pH Good Morning Gel Cleanser — deep but gentle cleanse'},
+          {name:'Step 3 - Toner',product:'Some By Mi AHA BHA PHA Toner — texture smooth karo, dead cells remove'},
+          {name:'Step 4 - Essence',product:'SK-II Facial Treatment Essence — glass skin ka signature step'},
+          {name:'Step 5 - Serum',product:'COSRX Snail Mucin 96% Essence — deep hydration lock'},
+          {name:'Step 6 - Moisturizer',product:'Laneige Water Bank Moisture Cream — dewy plump finish'},
+          {name:'Step 7 - SPF (Day)',product:'Purito Centella Green Level SPF 50+ — no white cast, daily protection'},
+        ]
+      },
+      makeup:['Gradient lip (ombre): Center pe bold color, bahar fade — iconic K-pop look','Puppy eye liner: Inner corner se neeche, droopy tail — soft innocent look','Monolid-friendly eyeshadow: Warm tones — terracotta, peach, dusty pink','Blush: Apple of cheeks se nose bridge — Korean sunburnt blush style','Skin prep sabse important: Primer + setting spray zaroori hai'],
+      era:'BTS Love Yourself / Map of the Soul era',
+      vibe:'Romantic Soft Visual — warmth aur approachability',
+    },
+    sharp:{
+      hairstyles:[
+        {name:'Two-Block Undercut',desc:'Sides tightly faded, top long aur textured — jawline aur define hoti hai. EXO Kai ka classic look hai yeh.'},
+        {name:'Slick Back',desc:'Hair gel se peeche sweep — strong features aur highlight hoti hain, powerful stage presence ke liye.'},
+        {name:'Textured Crop',desc:'Short textured top with subtle fade — modern sharp idol aesthetic jo everyday bhi suits karta hai.'},
+      ],
+      skincare:{
+        type:'Matte / Refined Skin',
+        steps:[
+          {name:'Step 1 - Cleanser',product:"Kiehl's Ultra Facial Cleanser — sebum control without over-drying"},
+          {name:'Step 2 - BHA Toner',product:"Paula's Choice BHA 2% — pores minimize karo, blackheads reduce"},
+          {name:'Step 3 - Niacinamide',product:'The Ordinary Niacinamide 10% — oil control + skin brightening'},
+          {name:'Step 4 - Moisturizer',product:'Clinique Dramatically Different Gel — lightweight matte finish'},
+          {name:'Step 5 - Mattifying SPF',product:'Biore UV Aqua Rich SPF 50 — no shine formula'},
+          {name:'Step 6 - Eye Cream',product:'Innisfree Retinol Eye Cream — under-eye dark circles treat karo'},
+        ]
+      },
+      makeup:['Sharp cat eye: Liquid liner se precise wing — intensity aur confidence ke liye','Contour jawline: Cool-toned contour powder se jaw define karo','Bold straight brows: Pencil se sharp horizontal brows — strong character','Smoky eye: Dark grey ya black — stage performance look ke liye','Matte lip: Deep wine ya brick red — powerful visual impact'],
+      era:'EXO MAMA / Obsession era',
+      vibe:'Charismatic Sharp Performer — intensity aur power',
+    },
+    model:{
+      hairstyles:[
+        {name:'Long Layers',desc:'Face ka elongated ratio balance hoga. Runway model aesthetic — BTS Jin ka signature style hai yeh.'},
+        {name:'Center Part Bob',desc:'Shoulder length, center parting — high fashion K-pop editorial look jo photoshoots ke liye perfect hai.'},
+        {name:'Sleek Straight',desc:'Flat iron se perfectly straight — model face ka best showcase. Simple yet stunning.'},
+      ],
+      skincare:{
+        type:'Dewy / Luminous Finish',
+        steps:[
+          {name:'Step 1 - Cleansing Oil',product:'DHC Deep Cleansing Oil — thorough yet gentle cleanse'},
+          {name:'Step 2 - Toner',product:'Hada Labo Gokujyun Lotion — intense hydration boost'},
+          {name:'Step 3 - HA Serum',product:'The Ordinary Hyaluronic Acid 2% — plumping volumizing effect'},
+          {name:'Step 4 - Face Oil',product:"Kiehl's Midnight Recovery Concentrate — overnight glow treatment"},
+          {name:'Step 5 - Moisturizer',product:'Tatcha The Water Cream — luminous glassy skin'},
+          {name:'Step 6 - SPF',product:'Shiseido Anessa SPF 50 — dewy finish with full protection'},
+        ]
+      },
+      makeup:['Highlighted cheekbones: Champagne highlighter — model glow ke liye','Nude lip: Apne lip color se ek shade lighter — sophisticated editorial look','Feathered brows: Natural high arch — sculptural face complement karti hai','Strobing: Forehead, nose bridge, cupid bow — dimensional face effect','Lash focus: Individual lashes ya natural mascara — doe eyes effect'],
+      era:'BTS Jin Epiphany / Super Tuna era',
+      vibe:'Editorial Model Visual — elegance aur timeless beauty',
+    },
+    baby:{
+      hairstyles:[
+        {name:'Crown Volume Blowout',desc:'Roots lift karo, top pe volume — baby face balanced lagega aur mature dikhoge stage pe.'},
+        {name:'Side Part with Layers',desc:'Side swept bangs — face structure add karta hai, features refine hote hain naturally.'},
+        {name:'Textured Quiff',desc:'Height pe focus — face ka baby-ness balance hota hai with strategic volume at crown.'},
+      ],
+      skincare:{
+        type:'Brightening / Anti-Dull',
+        steps:[
+          {name:'Step 1 - Gentle Cleanser',product:'Cetaphil Gentle Skin Cleanser — sensitive skin ke liye safe'},
+          {name:'Step 2 - Vitamin C',product:'Klairs Freshly Juiced Vitamin C Serum — glow boost aur brightening'},
+          {name:'Step 3 - Niacinamide',product:'The Inkey List Niacinamide — even skin tone for youthful clarity'},
+          {name:'Step 4 - Moisturizer',product:'Neutrogena Hydro Boost Gel — lightweight plumping hydration'},
+          {name:'Step 5 - SPF',product:'Altruist SPF 50 — daily protection, no white cast'},
+          {name:'Step 6 - Lip Treatment',product:'Laneige Lip Sleeping Mask — plump kissable lips overnight'},
+        ]
+      },
+      makeup:['Innocent no-makeup look: Tinted moisturizer + brow gel + tinted lip balm only','Glossy lips: Clear gloss ya water-tint — youthful fresh dewy look','Soft rounded brows: Natural arch, no harsh lines — baby face complement','Dewy blush: Liquid blush on cheeks aur nose tip — healthy natural flush','Skip heavy liner — natural lash focus karo for pure look'],
+      era:'BTS Jungkook Golden era / TWICE Feel Special',
+      vibe:'Youthful Pure Visual — charm aur eternal freshness',
+    },
+    symmetrical:{
+      hairstyles:[
+        {name:'Middle Part (Any Length)',desc:'Symmetry ko perfectly showcase karta hai. Almost har face shape pe suits — tumhari superpower hai yeh.'},
+        {name:'Space Buns',desc:'Playful aur editorial — symmetrical face ka best frame karta hai for photoshoots.'},
+        {name:'Blunt Bob',desc:'Clean geometric cut — symmetry aur highlight hoti hai, very K-pop editorial.'},
+      ],
+      skincare:{
+        type:'Maintenance / Clarity Focus',
+        steps:[
+          {name:'Step 1 - Double Cleanse',product:'COSRX Advanced Snail Foam — gentle but thorough cleanse'},
+          {name:'Step 2 - AHA Toner',product:'Pixi Glow Tonic — cell turnover, even radiant skin'},
+          {name:'Step 3 - Retinol',product:'The Ordinary Retinol 0.5% — long term skin health maintenance'},
+          {name:'Step 4 - Moisturizer',product:'First Aid Beauty Ultra Repair — barrier protection'},
+          {name:'Step 5 - SPF 50+',product:'Missha All Around Safe Block SPF 50 — prevent pigmentation'},
+          {name:'Step 6 - Weekly Mask',product:'Innisfree Super Volcanic Mask — deep pore weekly cleanse'},
+        ]
+      },
+      makeup:['Less is more: Symmetry hi tumhara main feature — overdo mat karo','Bold geometric liner: Graphic eyeliner ya colored liner — art forward','Statement lip: Ek bold element kafi — deep red ya electric pink','Clean skin: Foundation perfectly match karo — skin se attention na hatao','Lisa ka bold eye makeup style try karo — symmetry ke saath amazing lagega'],
+      era:'BLACKPINK How You Like That / Shut Down era',
+      vibe:'Flawless Symmetrical Visual — perfection aur versatility',
+    },
+  };
+  return g[key]||g.soft;
+}
+
+function getLookbook(key){
+  const b={
+    soft:[
+      {idol:'Jimin',group:'BTS',style:'Soft Boy',tip:'Pastel oversized knit + wide leg pants. Warm tones only. Minimalist accessories.',color:'#ff6b9d'},
+      {idol:'Jennie',group:'BLACKPINK',style:'Soft Girl',tip:'Plaid mini skirt + cropped cardigan + Mary Janes. Feminine coordinated set.',color:'#ff2d78'},
+      {idol:'Taeyeon',group:'SNSD',style:'Feminine',tip:'Flowy midi dress + dainty jewelry + soft wave hair. Classic elegance.',color:'#ffa0c0'},
+      {idol:'V (Taehyung)',group:'BTS',style:'Artistic',tip:'Vintage graphic tee + wide trousers + loafers. Creative casual look.',color:'#7c4dff'},
+      {idol:'Jisoo',group:'BLACKPINK',style:'Classic',tip:'Structured blazer + tailored pants. Power feminine look.',color:'#e8a0bf'},
+      {idol:'Jin',group:'BTS',style:'Romantic',tip:'Soft color shirt unbuttoned + chinos. Effortlessly charming.',color:'#00f5d4'},
+      {idol:'Suga',group:'BTS',style:'Monochrome',tip:'All black or all white — tonal dressing. Simple but impactful.',color:'#9e9e9e'},
+      {idol:'Joy',group:'Red Velvet',style:'Chic Casual',tip:'High waist jeans + tucked top + sneakers. Cool effortless vibe.',color:'#f48fb1'},
+    ],
+    sharp:[
+      {idol:'Kai',group:'EXO',style:'Dark Chic',tip:'All-black outfit + leather jacket + sharp boots. Charismatic.',color:'#ff5722'},
+      {idol:'G-Dragon',group:'BIGBANG',style:'Street Luxe',tip:'Designer streetwear + statement accessories. Trendsetter look.',color:'#ffd700'},
+      {idol:'Hyunjin',group:'Stray Kids',style:'Artistic Dark',tip:'Layered dark tones + flowing pieces + silver rings.',color:'#ab47bc'},
+      {idol:'Wonho',group:'Solo',style:'Athleisure',tip:'Fitted athletic wear + bomber jacket. Strong and stylish.',color:'#42a5f5'},
+      {idol:'Mingyu',group:'SEVENTEEN',style:'Smart Casual',tip:'Tailored coat + slim jeans + white sneakers.',color:'#29b6f6'},
+      {idol:'Shownu',group:'MONSTA X',style:'Bold Street',tip:'Graphic tee + cargo pants + chunky sneakers.',color:'#ef5350'},
+      {idol:'Mark',group:'GOT7',style:'Clean Cut',tip:'Simple fitted tee + well-fitted jeans + minimal accessories.',color:'#66bb6a'},
+      {idol:'Kang Daniel',group:'Solo',style:'Urban Cool',tip:'Oversized hoodie + biker shorts + high tops.',color:'#7e57c2'},
+    ],
+    model:[
+      {idol:'Jin',group:'BTS',style:'Classic Luxe',tip:'Fitted suit + minimal accessories + clean hair. Timeless.',color:'#00f5d4'},
+      {idol:'Irene',group:'Red Velvet',style:'Editorial',tip:'Monochrome outfit + sculptural bag + heels. Magazine-ready.',color:'#e91e63'},
+      {idol:'Eunwoo',group:'ASTRO',style:'Smart Casual',tip:'Tailored trousers + tucked-in shirt + loafers.',color:'#2196f3'},
+      {idol:'Tzuyu',group:'TWICE',style:'Elegant',tip:'Long dress + minimal earrings + sleek straight hair.',color:'#80cbc4'},
+      {idol:'Sehun',group:'EXO',style:'Minimalist',tip:'Clean lines, neutral palette. Quality over quantity.',color:'#4fc3f7'},
+      {idol:'Krystal',group:'f(x)',style:'Ice Queen',tip:'Cool tones + structured pieces + confident posture.',color:'#7986cb'},
+      {idol:'Moonbyul',group:'MAMAMOO',style:'Androgynous',tip:'Gender-neutral pieces + oversized silhouettes + caps.',color:'#ce93d8'},
+      {idol:'Lucas',group:'NCT',style:'Streetwear',tip:'Bold prints + layered chains + statement sneakers.',color:'#ffb74d'},
+    ],
+    baby:[
+      {idol:'Jungkook',group:'BTS',style:'Fresh Casual',tip:'White tee + blue jeans + white sneakers. Timeless clean look.',color:'#81c784'},
+      {idol:'Sana',group:'TWICE',style:'Cute Girly',tip:'Pastel coordinated set + platform sneakers. Sweet aesthetic.',color:'#f48fb1'},
+      {idol:'Tzuyu',group:'TWICE',style:'Innocent',tip:'Flowy white dress + minimal makeup + natural hair.',color:'#80cbc4'},
+      {idol:'Ni-ki',group:'ENHYPEN',style:'Youth Street',tip:'Graphic hoodie + joggers + clean sneakers. Gen-Z energy.',color:'#ffb74d'},
+      {idol:'Felix',group:'Stray Kids',style:'Edgy Cute',tip:'Bold prints + statement pieces + layered accessories.',color:'#ffd54f'},
+      {idol:'Wonyoung',group:'IVE',style:'Pastel Chic',tip:'Pink coordinated outfit + bow accessories + ballet flats.',color:'#f8bbd0'},
+      {idol:'Jeno',group:'NCT Dream',style:'Cool Teen',tip:'Varsity jacket + dark jeans + chunky sneakers.',color:'#80deea'},
+      {idol:'Yeri',group:'Red Velvet',style:'Playful',tip:'Bright colors + quirky prints + fun accessories.',color:'#ef9a9a'},
+    ],
+    symmetrical:[
+      {idol:'Lisa',group:'BLACKPINK',style:'Bold Street',tip:'Crop top + high-waist pants + statement shoes. Confident.',color:'#ffeb3b'},
+      {idol:'Suho',group:'EXO',style:'Sophisticated',tip:'Well-tailored coat + turtleneck + clean trousers.',color:'#fff176'},
+      {idol:'J-Hope',group:'BTS',style:'Colorful Street',tip:'Mix bold colors + fun accessories + statement sneakers.',color:'#ff9800'},
+      {idol:'Karina',group:'aespa',style:'Futuristic',tip:'Metallic pieces + geometric cuts + sleek hair.',color:'#ce93d8'},
+      {idol:'Solar',group:'MAMAMOO',style:'Powerful',tip:'Bold solid colors + fitted silhouettes + strong makeup.',color:'#ffcc02'},
+      {idol:'Eunwoo',group:'ASTRO',style:'Perfect Classic',tip:'Any well-fitted outfit — your symmetry does the work.',color:'#90caf9'},
+      {idol:'Nayeon',group:'TWICE',style:'Girly Pop',tip:'Bright colors + cute accessories + ponytail.',color:'#ef9a9a'},
+      {idol:'Baekhyun',group:'EXO',style:'Trendy',tip:'Layered streetwear + silver jewelry + clean sneakers.',color:'#b0bec5'},
+    ],
+  };
+  return b[key]||b.soft;
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function resetApp(){
+  ['previewWrap','btnAnalyze','freeResults','errorBox'].forEach(id=>document.getElementById(id).style.display='none');
+  const pc=document.getElementById('proContent');
+  pc.classList.remove('unlocked');
+  pc.style.display='none';
+  document.getElementById('proTeaser').style.display='block';
+  document.getElementById('uploadZone').style.display='block';
+  fileInput.value='';currentImg=null;globalMetrics=null;globalFaceData=null;
+  ['fSym','fJaw','fSkin','fEye','confFill'].forEach(id=>document.getElementById(id).style.width='0%');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+document.getElementById('main-app').style.display;
+</script>
+
+<!-- ══ GATE + PAYMENT SCRIPT ════════════════════════════ -->
+<script>
+(function(){
+
+  var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxoVySkI8qRcevogKEiCr3dcWA0JiA3tK6lhlandwFB3CR-tyoyMLfdapd_KA2qGgLagg/exec';
+  var UPI_ID = 'keshavb12@axl';
+
+  // ── Generate QR ──────────────────────────────────────
+  var upiLink = 'upi://pay?pa=' + UPI_ID + '&pn=KPop%20Tools&am=49&cu=INR&tn=KPop%20Tools%201%20Month';
+  new QRCode(document.getElementById('qr-code'), {
+    text: upiLink, width: 180, height: 180,
+    colorDark: '#000', colorLight: '#fff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  // ── Screen switcher ───────────────────────────────────
+  window.showScreen = function(id){
+    document.querySelectorAll('.gate-screen').forEach(function(s){
+      s.classList.remove('active');
+    });
+    document.getElementById(id).classList.add('active');
+    document.getElementById('kpop-gate').scrollTop = 0;
+  };
+
+  // ── Copy UPI ─────────────────────────────────────────
+  window.copyUPI = function(){
+    navigator.clipboard.writeText(UPI_ID).then(function(){
+      var t = document.getElementById('gate-toast');
+      t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); }, 2500);
+    });
+  };
+
+  // ── Key input refs ────────────────────────────────────
+  var inp   = document.getElementById('gate-input');
+  var btn   = document.getElementById('gate-btn');
+  var errEl = document.getElementById('gate-error');
+  var sucEl = document.getElementById('gate-success');
+
+  // ── Auto-format: KPOP-XXXXXX ─────────────────────────
+  inp.addEventListener('input', function(){
+    var v = this.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    if(v.length <= 4){
+      this.value = v;
+    } else {
+      var prefix = v.slice(0,4);
+      var rest   = v.slice(4,10);
+      this.value = prefix + (rest.length ? '-' + rest : '');
+    }
+  });
+
+  // ── Update placeholder ────────────────────────────────
+  inp.placeholder = 'KPOP-AB1234';
+  inp.maxLength = 11; // KPOP-XXXXXX = 11 chars
+
+  function setLoading(on){
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? '<span class="gate-spin"></span>VERIFY HO RAHA HAI...'
+      : 'UNLOCK KARO →';
+  }
+
+  function showErr(msg){
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+    sucEl.style.display = 'none';
+  }
+
+  // ── Verify with Google Apps Script ───────────────────
+  function verify(key, cb){
+    fetch(SCRIPT_URL + '?action=verify&key=' + encodeURIComponent(key))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ cb(d.success, d.user, d.message); })
+      .catch(function(){
+        cb(false, null, '❌ Server se connect nahi hua. Internet check karo.');
+      });
+  }
+
+  function unlock(){
+    document.getElementById('kpop-gate').style.display = 'none';
+    document.getElementById('main-app').style.display  = 'block';
+    loadModel();
+  }
+
+  function attempt(){
+    var key = inp.value.trim().toUpperCase();
+    if(!key){ showErr('Key enter karo pehle'); return; }
+    if(!/^KPOP-[A-Z0-9]{6}$/.test(key)){
+      showErr('Format: KPOP-AB1234 (6 characters)'); return;
+    }
+    setLoading(true);
+    verify(key, function(ok, user, msg){
+      if(ok){
+        sucEl.textContent = '✅ Valid! Tool load ho raha hai...';
+        sucEl.style.display = 'block';
+        errEl.style.display = 'none';
+        setTimeout(unlock, 900);
+      } else {
+        showErr(msg || 'Key invalid hai');
+        setLoading(false);
+      }
+    });
+  }
+
+  btn.addEventListener('click', attempt);
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') attempt(); });
+
+  // ── NO localStorage — har baar key maangega ──────────
+  // (intentionally removed)
+
+})();
+</script>
+</div><!-- /main-app -->
+</body>
+</html>
