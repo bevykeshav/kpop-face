@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<title>VOCAL RANGE CHECKER — KPop Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --pink:#ff2d78;--cyan:#00f5d4;--gold:#ffd700;
+  --dark:#0a0a0f;--card:#111118;--card2:#1c1c2a;
+  --border:#1e1e2e;--text:#e8e8f0;--muted:#5a5a7a;
+}
+body{
+  background:var(--dark);color:var(--text);
+  font-family:'Noto Sans KR',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 0%,rgba(0,245,212,.1),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%,rgba(255,45,120,.08),transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.container{position:relative;z-index:2;max-width:430px;margin:0 auto;padding:0 14px 100px;}
+
+/* Back button */
+.back-bar{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 14px 0;max-width:430px;margin:0 auto;
+  position:relative;z-index:2;
+}
+.back-btn{
+  background:transparent;border:1px solid var(--border);
+  color:var(--muted);font-family:'Space Mono',monospace;
+  font-size:10px;letter-spacing:2px;padding:8px 14px;
+  cursor:pointer;transition:all .2s;
+}
+.back-btn:hover{color:var(--text);border-color:#3a3a5a;}
+
+/* Header */
+.header{text-align:center;padding:24px 0 20px;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--cyan);letter-spacing:4px;}
+.logo span{color:var(--pink);}
+.subtitle{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
+
+/* Section */
+.section{background:var(--card);border:1px solid var(--border);padding:20px;margin-bottom:14px;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--muted);margin-bottom:14px;}
+
+/* Mic button */
+.mic-wrap{text-align:center;padding:10px 0;}
+.mic-btn{
+  width:110px;height:110px;border-radius:50%;
+  border:2px solid var(--cyan);background:rgba(0,245,212,.05);
+  cursor:pointer;transition:all .3s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  margin:0 auto;touch-action:manipulation;
+}
+.mic-btn:active,.mic-btn.recording{
+  background:rgba(255,45,120,.1);border-color:var(--pink);
+  box-shadow:0 0 30px rgba(255,45,120,.3);
+}
+.mic-icon{font-size:36px;transition:all .3s;}
+.mic-label{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:var(--cyan);}
+.mic-btn.recording .mic-label{color:var(--pink);}
+
+/* Waveform */
+.wave-wrap{margin-top:16px;height:60px;background:var(--dark);border:1px solid var(--border);position:relative;overflow:hidden;}
+canvas#waveCanvas{width:100%;height:100%;}
+.wave-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;pointer-events:none;}
+
+/* Note display */
+.note-display{
+  text-align:center;padding:20px;
+  background:var(--dark);border:1px solid var(--border);margin-top:14px;
+}
+.current-note{font-family:'Bebas Neue',sans-serif;font-size:72px;color:var(--cyan);line-height:1;}
+.current-freq{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;}
+.note-meter{height:6px;background:#1a1a2a;margin-top:12px;border-radius:3px;overflow:hidden;}
+.note-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));width:0%;transition:width .1s;}
+
+/* Range result */
+.range-card{
+  background:var(--dark);border:1px solid var(--border);
+  border-top:3px solid var(--cyan);padding:20px;margin-top:14px;
+  display:none;
+}
+.range-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.range-row:last-child{border-bottom:none;}
+.range-label{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;}
+.range-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--cyan);}
+.range-val.gold{color:var(--gold);}
+.range-val.pink{color:var(--pink);}
+
+/* Idol matches */
+.idol-matches{margin-top:14px;display:none;}
+.idol-card{
+  background:var(--card);border:1px solid var(--border);
+  padding:14px 16px;margin-bottom:8px;
+  display:flex;align-items:center;gap:14px;
+}
+.idol-emoji{font-size:28px;}
+.idol-info{flex:1;}
+.idol-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+.idol-group{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;}
+.idol-range-text{font-size:11px;color:var(--muted);margin-top:2px;}
+.match-bar-wrap{width:80px;text-align:right;}
+.match-pct{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--cyan);}
+.match-bar{height:4px;background:#1a1a2a;margin-top:4px;border-radius:2px;}
+.match-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));border-radius:2px;}
+
+/* Tips */
+.tips-wrap{margin-top:14px;display:none;}
+.tip-item{
+  background:var(--card);border:1px solid var(--border);
+  border-left:3px solid var(--cyan);
+  padding:12px 14px;margin-bottom:8px;
+  font-size:12px;color:#a0a0c0;line-height:1.6;
+}
+.tip-item strong{color:var(--text);}
+
+/* Buttons */
+.btn{
+  width:100%;padding:14px;border:none;color:#fff;
+  font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;
+  cursor:pointer;margin-top:10px;transition:all .2s;touch-action:manipulation;
+}
+.btn.cyan{background:linear-gradient(135deg,var(--cyan),#00c4a8);color:#000;}
+.btn.pink{background:linear-gradient(135deg,var(--pink),#b01050);}
+.btn.outline{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;letter-spacing:1px;margin-top:8px;}
+.btn:active{transform:scale(.98);}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e1e2e;border:1px solid #2e2e4e;border-left:3px solid var(--cyan);padding:12px 20px;font-size:13px;transition:transform .3s;z-index:99999;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.recording-pulse{animation:pulse 1s infinite;}
+</style>
+</head>
+<body>
+
+<!-- Back -->
+<div class="back-bar">
+  <button class="back-btn" onclick="window.location.href='index.html'">← DASHBOARD</button>
+  <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;">VOCAL RANGE CHECKER</span>
+</div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">VOCAL<span>★</span>CHECK</div>
+    <div class="subtitle">KPOP VOCAL RANGE ANALYZER</div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="section">
+    <div class="sec-title">📋 KAISE USE KARO</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.9;">
+      1. <strong style="color:var(--text)">MIC button dabao</strong> — permission allow karo<br>
+      2. <strong style="color:var(--text)">Sabse neecha note gaao</strong> (5 seconds)<br>
+      3. <strong style="color:var(--text)">Phir STOP karo</strong> — neecha note save ho jaayega<br>
+      4. <strong style="color:var(--text)">Phir MIC dabao</strong> — sabse uuncha note gaao (5 sec)<br>
+      5. <strong style="color:var(--text)">RESULT dekho</strong> — tumhara range aur idol match! 🎤
+    </div>
+  </div>
+
+  <!-- Step Tracker -->
+  <div class="section">
+    <div class="sec-title">📍 CURRENT STEP</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div id="step1-dot" style="flex:1;height:4px;background:var(--cyan);border-radius:2px;"></div>
+      <div id="step2-dot" style="flex:1;height:4px;background:var(--border);border-radius:2px;"></div>
+      <div id="step3-dot" style="flex:1;height:4px;background:var(--border);border-radius:2px;"></div>
+    </div>
+    <div id="step-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--cyan);">
+      STEP 1 — SABSE NEECHA NOTE GAAO
+    </div>
+    <div id="step-hint" style="font-size:11px;color:var(--muted);margin-top:4px;">
+      Mic button dabao aur apna lowest note hold karo
+    </div>
+  </div>
+
+  <!-- Mic + Waveform -->
+  <div class="section">
+    <div class="mic-wrap">
+      <button class="mic-btn" id="micBtn" onclick="toggleRecording()">
+        <div class="mic-icon" id="micIcon">🎤</div>
+        <div class="mic-label" id="micLabel">TAP TO START</div>
+      </button>
+    </div>
+    <div class="wave-wrap">
+      <canvas id="waveCanvas"></canvas>
+      <div class="wave-label" id="waveLabel">RECORD KARO</div>
+    </div>
+  </div>
+
+  <!-- Live Note Display -->
+  <div class="note-display" id="noteDisplay">
+    <div class="current-note" id="currentNote">—</div>
+    <div class="current-freq" id="currentFreq">FREQUENCY: — Hz</div>
+    <div class="note-meter"><div class="note-fill" id="noteFill"></div></div>
+  </div>
+
+  <!-- Range Result -->
+  <div class="range-card" id="rangeCard">
+    <div class="sec-title" style="color:var(--cyan)">🎵 TUMHARA VOCAL RANGE</div>
+    <div class="range-row">
+      <span class="range-label">LOWEST NOTE</span>
+      <span class="range-val" id="res-low">—</span>
+    </div>
+    <div class="range-row">
+      <span class="range-label">HIGHEST NOTE</span>
+      <span class="range-val pink" id="res-high">—</span>
+    </div>
+    <div class="range-row">
+      <span class="range-label">TOTAL RANGE</span>
+      <span class="range-val gold" id="res-range">—</span>
+    </div>
+    <div class="range-row">
+      <span class="range-label">VOICE TYPE</span>
+      <span class="range-val" id="res-type">—</span>
+    </div>
+  </div>
+
+  <!-- Idol Matches -->
+  <div class="idol-matches" id="idolMatches">
+    <div class="section" style="margin-bottom:0">
+      <div class="sec-title">🏆 IDOL MATCHES</div>
+      <div id="matchList"></div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="tips-wrap" id="tipsWrap">
+    <div class="section" style="margin-bottom:0">
+      <div class="sec-title">💡 TUMHARE LIYE TIPS</div>
+      <div id="tipsList"></div>
+    </div>
+  </div>
+
+  <!-- Reset -->
+  <button class="btn outline" id="resetBtn" style="display:none" onclick="resetAll()">🔄 DOBARA TEST KARO</button>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══ STATE ═══════════════════════════════
+var state = {
+  step: 1,          // 1=low, 2=high, 3=done
+  recording: false,
+  lowNote:  null,
+  lowFreq:  null,
+  highNote: null,
+  highFreq: null,
+  audioCtx: null,
+  analyser: null,
+  source:   null,
+  stream:   null,
+  rafId:    null,
+  detectedFreqs: []
+};
+
+// ══ NOTE DATA ════════════════════════════
+var NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function freqToNote(freq){
+  if(!freq||freq<60||freq>2000) return null;
+  var semitones = Math.round(12*Math.log2(freq/261.63)); // C4=261.63
+  var octave    = 4 + Math.floor((semitones)/12);
+  var noteIdx   = ((semitones % 12) + 12) % 12;
+  return { note: NOTES[noteIdx], octave: octave, full: NOTES[noteIdx]+octave };
+}
+
+function noteToMidi(noteObj){
+  if(!noteObj) return 0;
+  return 60 + (noteObj.octave-4)*12 + NOTES.indexOf(noteObj.note);
+}
+
+function midiToOctaves(low, high){
+  var semis = high - low;
+  var oct   = Math.floor(semis/12);
+  var extra = semis % 12;
+  if(extra===0) return oct+' Octave'+(oct>1?'s':'');
+  return oct+'.'+(Math.round(extra/12*10))+' Octaves';
+}
+
+// ══ VOICE TYPE ════════════════════════════
+function getVoiceType(lowMidi, highMidi){
+  if(highMidi >= 84) return { type:'HIGH TENOR / COUNTER-TENOR', color:'#00f5d4', emoji:'🎵' };
+  if(lowMidi <= 48 && highMidi >= 72) return { type:'BARITONE', color:'#ffd700', emoji:'🎶' };
+  if(lowMidi <= 52) return { type:'BASS / BARITONE', color:'#7c4dff', emoji:'🎸' };
+  if(highMidi >= 76) return { type:'TENOR', color:'#00f5d4', emoji:'🎤' };
+  if(highMidi >= 72) return { type:'LYRIC TENOR', color:'#42a5f5', emoji:'🎤' };
+  return { type:'MID RANGE', color:'#a0a0e0', emoji:'🎵' };
+}
+
+// ══ IDOL DATABASE ════════════════════════
+var IDOLS = [
+  { name:'Jungkook', group:'BTS', emoji:'🐰', low:'A2', high:'C5', lowMidi:45, highMidi:72, range:'2.5 octaves' },
+  { name:'Taehyung', group:'BTS', emoji:'🎭', low:'B1', high:'F4', lowMidi:35, highMidi:65, range:'2.4 octaves' },
+  { name:'Jimin',    group:'BTS', emoji:'✨', low:'E3', high:'Eb5',lowMidi:52, highMidi:75, range:'2.4 octaves' },
+  { name:'Chen',     group:'EXO', emoji:'🎤', low:'D3', high:'Eb5',lowMidi:50, highMidi:75, range:'2.3 octaves' },
+  { name:'Baekhyun', group:'EXO', emoji:'🌟', low:'A2', high:'Bb4',lowMidi:45, highMidi:70, range:'2.4 octaves' },
+  { name:'Kyuhyun',  group:'Super Junior', emoji:'💫', low:'G2', high:'G5', lowMidi:43, highMidi:79, range:'3.0 octaves' },
+  { name:'Taeil',    group:'NCT', emoji:'🎵', low:'G3', high:'G5', lowMidi:55, highMidi:79, range:'2.0 octaves' },
+  { name:'Wheein',   group:'MAMAMOO', emoji:'🎶', low:'F3', high:'F5', lowMidi:53, highMidi:77, range:'2.0 octaves' },
+];
+
+function getIdolMatches(lowMidi, highMidi){
+  return IDOLS.map(function(idol){
+    var overlap = Math.max(0, Math.min(highMidi, idol.highMidi) - Math.max(lowMidi, idol.lowMidi));
+    var maxRange= Math.max(highMidi-lowMidi, idol.highMidi-idol.lowMidi);
+    var match   = maxRange>0 ? Math.round((overlap/maxRange)*100) : 0;
+    return Object.assign({},idol,{match:match});
+  }).sort(function(a,b){ return b.match-a.match; }).slice(0,3);
+}
+
+// ══ TIPS ════════════════════════════════
+function getTips(voiceType, rangeOctaves){
+  var tips = [
+    '<strong>Warm up karo</strong> — Recording se pehle 5 min hum karo (A-E-I-O-U), warna voice crack ho sakti hai!',
+    '<strong>Breath control</strong> — Inhale deeply, phir slowly release karte hue note hold karo. Diaphragm use karo.',
+    '<strong>Posture matter karta hai</strong> — Straight khade ho, chin parallel to floor — isse range naturally badhti hai!',
+  ];
+  if(rangeOctaves >= 2){
+    tips.push('<strong>Achha range hai!</strong> Ab mixed voice practice karo — chest voice se head voice smoothly transition karo.');
+  }
+  if(voiceType.type.includes('TENOR')){
+    tips.push('<strong>Tenor tips</strong> — High notes ke liye nasal resonance use karo. "NG" sound practice karo nasal cavity open karne ke liye!');
+  }
+  return tips;
+}
+
+// ══ AUDIO ENGINE ════════════════════════
+function startRecording(){
+  navigator.mediaDevices.getUserMedia({audio:true,video:false})
+    .then(function(stream){
+      state.stream   = stream;
+      state.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      state.analyser = state.audioCtx.createAnalyser();
+      state.analyser.fftSize = 2048;
+      state.source   = state.audioCtx.createMediaStreamSource(stream);
+      state.source.connect(state.analyser);
+      state.recording = true;
+      state.detectedFreqs = [];
+      document.getElementById('micBtn').classList.add('recording');
+      document.getElementById('micIcon').textContent = '⏹';
+      document.getElementById('micLabel').textContent = 'TAP TO STOP';
+      document.getElementById('micLabel').classList.add('recording-pulse');
+      document.getElementById('waveLabel').style.display = 'none';
+      drawWave();
+      detectPitch();
+    })
+    .catch(function(){
+      showToast('❌ Mic permission do!');
+    });
+}
+
+function stopRecording(){
+  state.recording = false;
+  cancelAnimationFrame(state.rafId);
+  if(state.stream) state.stream.getTracks().forEach(function(t){ t.stop(); });
+  if(state.audioCtx) state.audioCtx.close();
+  document.getElementById('micBtn').classList.remove('recording');
+  document.getElementById('micIcon').textContent = '🎤';
+  document.getElementById('micLabel').textContent = 'TAP TO START';
+  document.getElementById('micLabel').classList.remove('recording-pulse');
+  document.getElementById('waveLabel').style.display = '';
+
+  // Get median frequency
+  if(state.detectedFreqs.length > 5){
+    state.detectedFreqs.sort(function(a,b){return a-b;});
+    var mid   = Math.floor(state.detectedFreqs.length/2);
+    var median= state.detectedFreqs[mid];
+    var noteObj = freqToNote(median);
+    if(noteObj){
+      if(state.step===1){
+        state.lowNote = noteObj;
+        state.lowFreq = median;
+        advanceStep();
+      } else if(state.step===2){
+        state.highNote = noteObj;
+        state.highFreq = median;
+        showResults();
+      }
+    } else {
+      showToast('Note detect nahi hua — dobara try karo!');
+    }
+  } else {
+    showToast('Zyada time record karo!');
+  }
+}
+
+window.toggleRecording = function(){
+  if(state.step===3) return;
+  if(!state.recording) startRecording();
+  else stopRecording();
+};
+
+// Pitch detection (autocorrelation)
+function detectPitch(){
+  if(!state.recording){ return; }
+  var buf = new Float32Array(state.analyser.fftSize);
+  state.analyser.getFloatTimeDomainData(buf);
+  var freq = autoCorrelate(buf, state.audioCtx.sampleRate);
+  if(freq > 60 && freq < 2000){
+    state.detectedFreqs.push(freq);
+    var noteObj = freqToNote(freq);
+    if(noteObj){
+      document.getElementById('currentNote').textContent = noteObj.full;
+      document.getElementById('currentFreq').textContent = 'FREQUENCY: '+Math.round(freq)+' Hz';
+      var pct = Math.min(100, Math.max(0, ((freq-60)/(2000-60))*100));
+      document.getElementById('noteFill').style.width = pct+'%';
+    }
+  }
+  state.rafId = requestAnimationFrame(detectPitch);
+}
+
+function autoCorrelate(buf, sampleRate){
+  var SIZE = buf.length;
+  var rms = 0;
+  for(var i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
+  rms = Math.sqrt(rms/SIZE);
+  if(rms<0.01) return -1;
+  var r1=0,r2=SIZE-1,thres=0.2;
+  for(var i=0;i<SIZE/2;i++){ if(Math.abs(buf[i])<thres){r1=i;break;} }
+  for(var i=1;i<SIZE/2;i++){ if(Math.abs(buf[SIZE-i])<thres){r2=SIZE-i;break;} }
+  buf=buf.slice(r1,r2);
+  SIZE=buf.length;
+  var c=new Float32Array(SIZE).fill(0);
+  for(var i=0;i<SIZE;i++) for(var j=0;j<SIZE-i;j++) c[i]+=buf[j]*buf[j+i];
+  var d=0;while(c[d]>c[d+1]) d++;
+  var maxval=-1,maxpos=-1;
+  for(var i=d;i<SIZE;i++){ if(c[i]>maxval){maxval=c[i];maxpos=i;} }
+  var T0=maxpos;
+  var x1=c[T0-1],x2=c[T0],x3=c[T0+1];
+  var a=(x1+x3-2*x2)/2,b=(x3-x1)/2;
+  if(a) T0=T0-b/(2*a);
+  return sampleRate/T0;
+}
+
+// Waveform
+function drawWave(){
+  var canvas=document.getElementById('waveCanvas');
+  var ctx=canvas.getContext('2d');
+  canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;
+  function draw(){
+    if(!state.recording) return;
+    requestAnimationFrame(draw);
+    var buf=new Uint8Array(state.analyser.frequencyBinCount);
+    state.analyser.getByteTimeDomainData(buf);
+    ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.lineWidth=2;ctx.strokeStyle='#00f5d4';ctx.beginPath();
+    var sliceWidth=canvas.width*1.0/buf.length,x=0;
+    for(var i=0;i<buf.length;i++){
+      var v=buf[i]/128;var y=v*canvas.height/2;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      x+=sliceWidth;
+    }
+    ctx.lineTo(canvas.width,canvas.height/2);ctx.stroke();
+  }
+  draw();
+}
+
+// ══ STEPS ════════════════════════════════
+function advanceStep(){
+  state.step = 2;
+  document.getElementById('step1-dot').style.background='#2a2a3a';
+  document.getElementById('step2-dot').style.background='var(--cyan)';
+  document.getElementById('step-label').textContent='STEP 2 — SABSE UUNCHA NOTE GAAO';
+  document.getElementById('step-hint').textContent='Ab apna highest note gaao aur hold karo';
+  document.getElementById('currentNote').textContent='—';
+  document.getElementById('currentFreq').textContent='FREQUENCY: — Hz';
+  showToast('✅ Lowest note save! Ab highest note gaao.');
+}
+
+function showResults(){
+  state.step = 3;
+  document.getElementById('step2-dot').style.background='#2a2a3a';
+  document.getElementById('step3-dot').style.background='var(--cyan)';
+  document.getElementById('step-label').textContent='STEP 3 — RESULTS DEKHO! 🎉';
+  document.getElementById('step-hint').textContent='Tumhara vocal analysis ready hai';
+  document.getElementById('micBtn').style.opacity='.4';
+  document.getElementById('micBtn').style.pointerEvents='none';
+
+  var lowMidi  = noteToMidi(state.lowNote);
+  var highMidi = noteToMidi(state.highNote);
+
+  // Swap if recorded in wrong order
+  if(lowMidi > highMidi){
+    var tmp=state.lowNote; state.lowNote=state.highNote; state.highNote=tmp;
+    tmp=lowMidi; lowMidi=highMidi; highMidi=tmp;
+  }
+
+  var rangeOct = midiToOctaves(lowMidi, highMidi);
+  var voice    = getVoiceType(lowMidi, highMidi);
+  var matches  = getIdolMatches(lowMidi, highMidi);
+  var tips     = getTips(voice, highMidi-lowMidi >= 24 ? 2 : 1);
+
+  // Range card
+  var rc = document.getElementById('rangeCard');
+  rc.style.display='block';
+  document.getElementById('res-low').textContent   = state.lowNote.full;
+  document.getElementById('res-high').textContent  = state.highNote.full;
+  document.getElementById('res-range').textContent = rangeOct;
+  var typeEl = document.getElementById('res-type');
+  typeEl.textContent = voice.emoji+' '+voice.type;
+  typeEl.style.color = voice.color;
+
+  // Idol matches
+  var ml = document.getElementById('matchList');
+  ml.innerHTML = '';
+  matches.forEach(function(idol){
+    var div=document.createElement('div');
+    div.className='idol-card';
+    div.innerHTML='<div class="idol-emoji">'+idol.emoji+'</div>'
+      +'<div class="idol-info"><div class="idol-name">'+idol.name+'</div>'
+      +'<div class="idol-group">'+idol.group+'</div>'
+      +'<div class="idol-range-text">Range: '+idol.low+'–'+idol.high+' ('+idol.range+')</div></div>'
+      +'<div class="match-bar-wrap"><div class="match-pct">'+idol.match+'%</div>'
+      +'<div class="match-bar"><div class="match-fill" style="width:'+idol.match+'%"></div></div></div>';
+    ml.appendChild(div);
+  });
+  document.getElementById('idolMatches').style.display='block';
+
+  // Tips
+  var tl=document.getElementById('tipsList');
+  tl.innerHTML='';
+  tips.forEach(function(tip){
+    var d=document.createElement('div');d.className='tip-item';d.innerHTML=tip;tl.appendChild(d);
+  });
+  document.getElementById('tipsWrap').style.display='block';
+  document.getElementById('resetBtn').style.display='block';
+
+  rc.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function resetAll(){
+  state.step=1; state.recording=false;
+  state.lowNote=null; state.lowFreq=null;
+  state.highNote=null; state.highFreq=null;
+  state.detectedFreqs=[];
+  document.getElementById('step1-dot').style.background='var(--cyan)';
+  document.getElementById('step2-dot').style.background='var(--border)';
+  document.getElementById('step3-dot').style.background='var(--border)';
+  document.getElementById('step-label').textContent='STEP 1 — SABSE NEECHA NOTE GAAO';
+  document.getElementById('step-hint').textContent='Mic button dabao aur apna lowest note hold karo';
+  document.getElementById('rangeCard').style.display='none';
+  document.getElementById('idolMatches').style.display='none';
+  document.getElementById('tipsWrap').style.display='none';
+  document.getElementById('resetBtn').style.display='none';
+  document.getElementById('currentNote').textContent='—';
+  document.getElementById('currentFreq').textContent='FREQUENCY: — Hz';
+  document.getElementById('noteFill').style.width='0%';
+  document.getElementById('micBtn').style.opacity='1';
+  document.getElementById('micBtn').style.pointerEvents='auto';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },3000);
+}
+
+// Session check
+var session = sessionStorage.getItem('kpop_session');
+if(!session){ window.location.href='index.html'; }
+</script>
+</body>
+</html>
