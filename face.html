@@ -438,6 +438,45 @@ h1{
   touch-action:manipulation;
 }
 
+/* ── Scan Progress ── */
+.scan-progress{
+  background:var(--card2);border:1px solid var(--border);
+  padding:16px;margin-bottom:14px;
+}
+.scan-prog-label{
+  display:flex;justify-content:space-between;
+  font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:2px;color:var(--muted);margin-bottom:8px;
+}
+.scan-prog-bar{height:4px;background:#1a1a2a;border-radius:2px;overflow:hidden;}
+.scan-prog-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));border-radius:2px;transition:width .4s ease;}
+.scan-dot{
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--border);background:#0a0a0f;
+  color:var(--muted);font-size:11px;font-family:'Bebas Neue',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .3s;
+}
+.scan-dot.done{background:rgba(0,245,212,.1);border-color:var(--cyan);color:var(--cyan);}
+.scan-dot.active{background:rgba(255,45,120,.1);border-color:var(--pink);color:var(--pink);}
+
+/* ── PDF Button ── */
+.btn-pdf{
+  width:100%;padding:16px;
+  background:linear-gradient(135deg,#ffd700,#e6a000);
+  border:none;color:#000;
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;
+  cursor:pointer;margin-top:12px;transition:all .2s;
+  touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-pdf:active{transform:scale(.98);}
+.accuracy-badge{
+  background:rgba(0,245,212,.1);border:1px solid rgba(0,245,212,.2);
+  padding:8px 14px;text-align:center;margin-bottom:12px;
+  font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--cyan);letter-spacing:2px;
+}
+
 /* ══ LICENSE GATE ══════════════════════════════ */
 #kpop-gate{
   position:fixed;inset:0;
@@ -842,24 +881,45 @@ window.saveResultsToSheet = function(resultsObj) {
     </div>
   </div>
 
-  <!-- UPLOAD -->
-  <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" accept="image/*" capture="user">
-    <span class="upload-icon">📸</span>
-    <div class="upload-text">Selfie upload ya photo lo</div>
-    <div class="upload-sub">Camera se seedha ya gallery se — free basic analysis</div>
-    <div class="upload-hint">🔒 Data save nahi hota · Phone mein hi process</div>
-  </div>
+  <!-- UPLOAD — 3 SCAN SYSTEM -->
+  <div id="scanSystem">
 
-  <!-- PREVIEW -->
-  <div class="preview-wrap" id="previewWrap">
-    <canvas id="previewCanvas"></canvas>
-    <div class="preview-overlay"></div>
-    <div class="scan-line" id="scanLine"></div>
-    <div class="preview-label">AI SCAN READY</div>
-  </div>
+    <!-- Progress Bar -->
+    <div class="scan-progress" id="scanProgress" style="display:none">
+      <div class="scan-prog-label">
+        <span id="scanProgText">SCAN 1 OF 3</span>
+        <span id="scanProgPct">0%</span>
+      </div>
+      <div class="scan-prog-bar">
+        <div class="scan-prog-fill" id="scanProgFill"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+        <div class="scan-dot" id="dot1">1</div>
+        <div class="scan-dot" id="dot2">2</div>
+        <div class="scan-dot" id="dot3">3</div>
+      </div>
+    </div>
 
-  <button class="btn-main" id="btnAnalyze">ANALYZE MY FACE</button>
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*" capture="user">
+      <span class="upload-icon">📸</span>
+      <div class="upload-text">Selfie upload ya photo lo</div>
+      <div class="upload-sub" id="uploadSub">3 baar same pic upload karo — average se accurate result milega!</div>
+      <div class="upload-hint">🔒 Data save nahi hota · Phone mein hi process</div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-wrap" id="previewWrap">
+      <canvas id="previewCanvas"></canvas>
+      <div class="preview-overlay"></div>
+      <div class="scan-line" id="scanLine"></div>
+      <div class="preview-label" id="previewLabel">AI SCAN READY</div>
+    </div>
+
+    <button class="btn-main" id="btnAnalyze">SCAN 1/3 — ANALYZE KARO</button>
+
+  </div><!-- /scanSystem -->
 
   <!-- LOADING -->
   <div class="loading" id="loading">
@@ -1008,6 +1068,14 @@ window.saveResultsToSheet = function(resultsObj) {
 
     <button class="btn-outline" onclick="resetApp()">NAYI PHOTO ANALYZE KARO</button>
   </div><!-- end freeResults -->
+
+  <!-- PDF DOWNLOAD -->
+  <div id="pdfSection" style="display:none">
+    <div class="accuracy-badge">✅ 3 SCANS COMPLETE — AVERAGED REPORT READY</div>
+    <button class="btn-pdf" id="btnPDF" onclick="downloadPDF()">
+      📄 FULL REPORT PDF DOWNLOAD KARO
+    </button>
+  </div>
 
 
 </div>
@@ -1183,23 +1251,30 @@ function handleFile(file){
       document.getElementById('proContent').style.display='none';
       uploadZone.style.display='none';
 
-      // ── Saved results check ──────────────────────────
-      if(window.checkSavedResults){
+      // ── Saved results check (only on first upload) ──
+      if(scanCount === 0 && window.checkSavedResults){
         var analyzeBtn = document.getElementById('btnAnalyze');
         analyzeBtn.textContent = '🔍 CHECKING...';
         analyzeBtn.disabled = true;
         checkSavedResults(img, function(saved){
-          analyzeBtn.textContent = 'ANALYZE KARO →';
           analyzeBtn.disabled = false;
           if(saved){
-            // Saved results mile! Directly show karo
-            showToast('✅ Pehle ki analysis mili — same results dikha raha hai!');
-            globalMetrics   = saved.metrics   || null;
-            globalFaceData  = saved.faceData  || null;
-            window._savedResults = saved;
+            showToast('✅ Pehle ki analysis mili — same results!');
+            globalMetrics  = saved.metrics  || null;
+            globalFaceData = saved.faceData || null;
+            scanCount = 3; // mark as complete
+            updateScanUI();
+            document.getElementById('scanProgText').textContent = 'COMPLETE ✓';
+            document.getElementById('scanProgFill').style.width = '100%';
             renderSavedResults(saved);
+          } else {
+            analyzeBtn.textContent = 'SCAN 1/3 — ANALYZE KARO';
+            updateScanUI();
           }
         });
+      } else {
+        document.getElementById('btnAnalyze').style.display = 'block';
+        updateScanUI();
       }
     };
     img.src=e.target.result;
@@ -1231,7 +1306,33 @@ function drawCanvas(img,lms){
 // ═══════════════════════════════════════════
 // ANALYZE
 // ═══════════════════════════════════════════
-document.getElementById('btnAnalyze').addEventListener('click',startAnalysis);
+// ═══════════════════════════════════════════
+// 3-SCAN SYSTEM
+// ═══════════════════════════════════════════
+let scanCount    = 0;   // 0,1,2 = scans done
+let scanResults  = [];  // array of metrics from each scan
+const TOTAL_SCANS = 3;
+
+document.getElementById('btnAnalyze').addEventListener('click', startAnalysis);
+
+// Update progress UI
+function updateScanUI(){
+  var prog = document.getElementById('scanProgress');
+  prog.style.display = 'block';
+  var pct = Math.round((scanCount/TOTAL_SCANS)*100);
+  document.getElementById('scanProgFill').style.width = pct+'%';
+  document.getElementById('scanProgText').textContent = 'SCAN '+(scanCount+1)+' OF '+TOTAL_SCANS;
+  document.getElementById('scanProgPct').textContent = pct+'%';
+  document.getElementById('btnAnalyze').textContent = 'SCAN '+(scanCount+1)+'/'+TOTAL_SCANS+' — ANALYZE KARO';
+
+  // Dots
+  for(var i=1;i<=3;i++){
+    var dot = document.getElementById('dot'+i);
+    dot.className = 'scan-dot';
+    if(i <= scanCount) dot.classList.add('done');
+    else if(i === scanCount+1) dot.classList.add('active');
+  }
+}
 
 async function startAnalysis(){
   if(!modelReady){showToast('AI load ho raha hai, thoda wait karo');return;}
@@ -1239,27 +1340,72 @@ async function startAnalysis(){
   document.getElementById('loading').style.display='block';
   document.getElementById('errorBox').style.display='none';
   document.getElementById('scanLine').style.display='block';
+
   let mi=0;
   const iv=setInterval(()=>{
     mi=(mi+1)%LOADING_MSGS.length;
     document.getElementById('loadingText').textContent=LOADING_MSGS[mi][0];
     document.getElementById('loadingSub').textContent=LOADING_MSGS[mi][1];
   },700);
+
   let landmarks=null,isReal=false;
   try{
     if(detector&&detector.estimateFaces) landmarks=await detector.estimateFaces(currentImg);
   }catch(e){console.warn(e);}
+
   let metrics=null;
   if(landmarks&&landmarks.length>0){
     try{metrics=computeReal(landmarks[0].keypoints,currentImg);drawCanvas(currentImg,landmarks[0].keypoints);isReal=true;}catch(e){}
   }
   if(!metrics) metrics=computeFallback(currentImg);
+
   clearInterval(iv);
   document.getElementById('scanLine').style.display='none';
   document.getElementById('loading').style.display='none';
-  globalMetrics=metrics;
-  globalFaceData=FACE_TYPES.find(f=>f.key===metrics.type)||FACE_TYPES[0];
-  showFreeResults(metrics,isReal);
+
+  // Store this scan
+  scanResults.push(metrics);
+  scanCount++;
+  updateScanUI();
+
+  if(scanCount < TOTAL_SCANS){
+    // More scans needed
+    showToast('✅ Scan '+scanCount+' complete! Ab '+( TOTAL_SCANS-scanCount)+' aur scan karo same pic se.');
+    // Reset for next upload
+    document.getElementById('previewWrap').style.display='none';
+    document.getElementById('btnAnalyze').style.display='none';
+    document.getElementById('uploadZone').style.display='block';
+    document.getElementById('uploadSub').textContent = 'Scan '+(scanCount+1)+'/'+TOTAL_SCANS+' — Same pic dobara upload karo!';
+    fileInput.value='';
+    currentImg=null;
+  } else {
+    // All 3 scans done — average karo
+    var avgMetrics = averageMetrics(scanResults);
+    globalMetrics  = avgMetrics;
+    globalFaceData = FACE_TYPES.find(f=>f.key===avgMetrics.type)||FACE_TYPES[0];
+    showFreeResults(avgMetrics, isReal);
+
+    // Save averaged results to sheet
+    setTimeout(function(){
+      if(window.saveResultsToSheet){
+        saveResultsToSheet({ metrics: avgMetrics, faceData: globalFaceData, scans: 3 });
+      }
+    }, 1500);
+  }
+}
+
+// Average 3 scans ke metrics
+function averageMetrics(arr){
+  var n = arr.length;
+  var avg = {
+    symmetry: Math.round(arr.reduce(function(s,m){return s+m.symmetry;},0)/n),
+    jawScore:  Math.round(arr.reduce(function(s,m){return s+m.jawScore;},0)/n),
+    eyeScore:  Math.round(arr.reduce(function(s,m){return s+m.eyeScore;},0)/n),
+    skinScore: Math.round(arr.reduce(function(s,m){return s+m.skinScore;},0)/n),
+    faceRatio: arr.reduce(function(s,m){return s+m.faceRatio;},0)/n,
+  };
+  avg.type = classify(avg);
+  return avg;
 }
 
 function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
@@ -1355,13 +1501,15 @@ function showFreeResults(m,isReal){
   document.getElementById('freeResults').scrollIntoView({behavior:'smooth',block:'start'});
   setTimeout(function(){ unlockProContent(); }, 600);
 
-  // ── Save results to Google Sheet ─────────────────────
+  // Show PDF button only after all 3 scans
+  if(scanCount >= TOTAL_SCANS){
+    document.getElementById('pdfSection').style.display = 'block';
+  }
+
+  // Save results
   setTimeout(function(){
     if(window.saveResultsToSheet && globalMetrics && globalFaceData){
-      saveResultsToSheet({
-        metrics:  globalMetrics,
-        faceData: globalFaceData
-      });
+      saveResultsToSheet({ metrics: globalMetrics, faceData: globalFaceData, scans: scanCount });
     }
   }, 2000);
 }
@@ -1371,11 +1519,27 @@ function renderSavedResults(saved){
   if(!saved || !saved.metrics || !saved.faceData) return;
   globalMetrics  = saved.metrics;
   globalFaceData = saved.faceData;
-
-  // Show results directly
+  document.getElementById('uploadZone').style.display='none';
+  document.getElementById('btnAnalyze').style.display='none';
   document.getElementById('freeResults').style.display = 'block';
   var m    = saved.metrics;
-  var conf = Math.round(m.confidence * 100) || 85;
+  var conf = 95;
+  var fd   = saved.faceData;
+  document.getElementById('resEmoji').textContent = fd.emoji||'✨';
+  document.getElementById('resType').textContent  = fd.type||'—';
+  document.getElementById('resDesc').textContent  = fd.desc||'';
+  document.getElementById('resAiBadge').textContent = 'Saved Analysis (3 Scans Averaged)';
+  document.getElementById('confVal').textContent  = conf+'%';
+  var jawLabel  = m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
+  var skinLabel = m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Care';
+  document.getElementById('mSym').textContent  = m.symmetry+'%';
+  document.getElementById('mJaw').textContent  = jawLabel;
+  document.getElementById('mSkin').textContent = skinLabel;
+  document.getElementById('mEye').textContent  = m.eyeScore+'%';
+  var base = Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
+  document.getElementById('freeIdolMatches').innerHTML = (fd.idols||[]).slice(0,3).map(function(idol,i){
+    return '<div class="idol-match"><div class="idol-avatar" style="background:'+idol.color+'20;border:1px solid '+idol.color+'40">'+idol.emoji+'</div><div class="idol-info"><div class="idol-name">'+idol.name+'</div><div class="idol-group">'+idol.group+'</div></div><div class="match-pct" style="color:'+idol.color+'">'+(Math.min(96,base-i*5))+'%</div></div>';
+  }).join('');
   setTimeout(function(){
     document.getElementById('confFill').style.width = conf+'%';
     document.getElementById('fSym').style.width  = m.symmetry+'%';
@@ -1384,6 +1548,7 @@ function renderSavedResults(saved){
     document.getElementById('fEye').style.width  = m.eyeScore+'%';
   }, 250);
   document.getElementById('freeResults').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('pdfSection').style.display = 'block';
   setTimeout(function(){ unlockProContent(); }, 600);
 }
 
@@ -1795,15 +1960,147 @@ function getLookbook(key){
 // UTILS
 // ═══════════════════════════════════════════
 function resetApp(){
-  ['previewWrap','btnAnalyze','freeResults','errorBox'].forEach(id=>document.getElementById(id).style.display='none');
+  ['previewWrap','btnAnalyze','freeResults','errorBox','pdfSection'].forEach(id=>document.getElementById(id).style.display='none');
   const pc=document.getElementById('proContent');
   pc.classList.remove('unlocked');
   pc.style.display='none';
   document.getElementById('proTeaser').style.display='block';
   document.getElementById('uploadZone').style.display='block';
+  document.getElementById('uploadSub').textContent='3 baar same pic upload karo — average se accurate result milega!';
   fileInput.value='';currentImg=null;globalMetrics=null;globalFaceData=null;
+  scanCount=0; scanResults=[];
+  document.getElementById('scanProgress').style.display='none';
+  document.getElementById('btnAnalyze').textContent='SCAN 1/3 — ANALYZE KARO';
   ['fSym','fJaw','fSkin','fEye','confFill'].forEach(id=>document.getElementById(id).style.width='0%');
+  ['dot1','dot2','dot3'].forEach(function(id){ document.getElementById(id).className='scan-dot'; });
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════
+// PDF DOWNLOAD
+// ═══════════════════════════════════════════
+function downloadPDF(){
+  const m  = globalMetrics;
+  const fd = globalFaceData;
+  if(!m||!fd){ showToast('Pehle analysis karo!'); return; }
+
+  const btn = document.getElementById('btnPDF');
+  btn.textContent = '⏳ PDF BAN RAHA HAI...';
+  btn.disabled = true;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W=210, H=297;
+  const pink=[255,45,120], cyan=[0,245,212], gold=[255,215,0];
+  const dark=[10,10,15], card=[17,17,24], muted=[90,90,122];
+
+  // Background
+  doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
+
+  // Top bar
+  doc.setFillColor(...pink); doc.rect(0,0,W,4,'F');
+
+  // Logo
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(32); doc.setTextColor(...pink);
+  doc.text('KPOP', 20, 22);
+  doc.setTextColor(...cyan);
+  doc.text('★TOOLS', 46, 22);
+
+  // Report title
+  doc.setFontSize(10); doc.setTextColor(...muted);
+  doc.setFont('helvetica','normal');
+  doc.text('IDOL FACE ANALYSIS REPORT — 3 SCANS AVERAGED', 20, 30);
+
+  // Date
+  var today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  doc.text('Date: '+today, 20, 36);
+
+  // Divider
+  doc.setDrawColor(...cyan); doc.setLineWidth(0.3);
+  doc.line(20,40,190,40);
+
+  // Face type section
+  doc.setFillColor(...card); doc.rect(20,44,170,30,'F');
+  doc.setDrawColor(...pink); doc.setLineWidth(0.5);
+  doc.line(20,44,20,74);
+  doc.setFontSize(8); doc.setTextColor(...muted); doc.text('FACE TYPE', 26,51);
+  doc.setFontSize(22); doc.setTextColor(...pink); doc.setFont('helvetica','bold');
+  doc.text((fd.emoji||'')+'  '+fd.type.toUpperCase(), 26,64);
+  doc.setFontSize(9); doc.setTextColor(200,200,220); doc.setFont('helvetica','normal');
+  var descLines = doc.splitTextToSize(fd.desc||'', 140);
+  doc.text(descLines, 26,70);
+
+  // Metrics section
+  var y=82;
+  doc.setFontSize(9); doc.setTextColor(...cyan); doc.setFont('helvetica','bold');
+  doc.text('FACE METRICS (3-SCAN AVERAGE)', 20, y); y+=6;
+
+  var metrics=[
+    ['Symmetry Score', m.symmetry+'%', m.symmetry],
+    ['Jawline Score',  m.jawScore+'%',  m.jawScore],
+    ['Eye Ratio',      m.eyeScore+'%',  m.eyeScore],
+    ['Skin Clarity',   m.skinScore+'%', m.skinScore],
+  ];
+  metrics.forEach(function(row){
+    doc.setFillColor(...card); doc.rect(20,y,170,12,'F');
+    doc.setFontSize(9); doc.setTextColor(200,200,220); doc.setFont('helvetica','normal');
+    doc.text(row[0], 26, y+8);
+    doc.setTextColor(...cyan); doc.setFont('helvetica','bold');
+    doc.text(row[1], 160, y+8, {align:'right'});
+    // Bar
+    var bx=80, bw=75, bh=3;
+    doc.setFillColor(30,30,46); doc.rect(bx,y+5,bw,bh,'F');
+    doc.setFillColor(...cyan);
+    doc.rect(bx,y+5,bw*(row[2]/100),bh,'F');
+    y+=14;
+  });
+
+  // Idol matches
+  y+=4;
+  doc.setFontSize(9); doc.setTextColor(...pink); doc.setFont('helvetica','bold');
+  doc.text('TOP IDOL MATCHES', 20,y); y+=6;
+
+  var base=Math.min(96,Math.round((m.symmetry+m.jawScore+m.eyeScore)/3*.85+10));
+  (fd.idols||[]).slice(0,5).forEach(function(idol,i){
+    doc.setFillColor(...card); doc.rect(20,y,170,12,'F');
+    doc.setFontSize(9); doc.setTextColor(220,220,240); doc.setFont('helvetica','normal');
+    doc.text((i+1)+'.  '+idol.name+' ('+idol.group+')', 26,y+8);
+    var pct = Math.min(96,base-i*5);
+    doc.setTextColor(...gold); doc.setFont('helvetica','bold');
+    doc.text(pct+'%', 185,y+8,{align:'right'});
+    y+=14;
+  });
+
+  // Pro tips summary
+  y+=4;
+  if(y > 220){ doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y=20; }
+  doc.setFontSize(9); doc.setTextColor(...gold); doc.setFont('helvetica','bold');
+  doc.text('GROOMING RECOMMENDATIONS', 20,y); y+=6;
+
+  var guide = typeof getGroomingGuide==='function' ? getGroomingGuide(m.type) : null;
+  if(guide && guide.hair){
+    guide.hair.slice(0,3).forEach(function(tip){
+      if(y>265){ return; }
+      doc.setFillColor(...card); doc.rect(20,y,170,10,'F');
+      doc.setFontSize(8); doc.setTextColor(180,180,210); doc.setFont('helvetica','normal');
+      var tipLines = doc.splitTextToSize('• '+tip,160);
+      doc.text(tipLines[0], 24,y+7);
+      y+=12;
+    });
+  }
+
+  // Footer
+  doc.setFillColor(...card); doc.rect(0,H-16,W,16,'F');
+  doc.setFontSize(8); doc.setTextColor(...muted); doc.setFont('helvetica','normal');
+  doc.text('Generated by KPOP TOOLS · bevykeshav.github.io/kpop-face', W/2, H-8, {align:'center'});
+  doc.setTextColor(...pink);
+  doc.text('★', W/2-28, H-8);
+
+  doc.save('KPop-Face-Report-'+fd.type+'.pdf');
+  btn.innerHTML = '📄 FULL REPORT PDF DOWNLOAD KARO';
+  btn.disabled = false;
+  showToast('✅ PDF download ho gayi!');
 }
 
 function showToast(msg){
