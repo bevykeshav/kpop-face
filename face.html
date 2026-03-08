@@ -665,7 +665,61 @@ h1{
   <span style="font-family:'Space Mono',monospace;font-size:9px;color:#5a5a7a;letter-spacing:2px;">IDOL FACE ANALYZER</span>
 </div>
 <script>
-if(!sessionStorage.getItem('kpop_session')){ window.location.href='index.html'; }
+// Session se license key nikalo
+var _session = sessionStorage.getItem('kpop_session');
+if(!_session){ window.location.href='index.html'; }
+var _sessionData = {};
+try{ _sessionData = JSON.parse(_session); }catch(e){}
+
+// License key — session mein save hai (index.html ne save kiya tha)
+var CURRENT_KEY = sessionStorage.getItem('kpop_license_key') || '';
+
+// ── Image Hash Function ─────────────────────────────────
+// Canvas pe 16x16 resize karke pixel fingerprint banao
+function getImageHash(imgElement) {
+  var canvas = document.createElement('canvas');
+  canvas.width = 16; canvas.height = 16;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(imgElement, 0, 0, 16, 16);
+  var data = ctx.getImageData(0, 0, 16, 16).data;
+  var hash = '';
+  for(var i = 0; i < data.length; i += 16) {
+    hash += ('0' + data[i].toString(16)).slice(-2);
+  }
+  return hash;
+}
+
+var SCRIPT_URL_RESULTS = 'https://script.google.com/macros/s/AKfycbxoVySkI8qRcevogKEiCr3dcWA0JiA3tK6lhlandwFB3CR-tyoyMLfdapd_KA2qGgLagg/exec';
+
+// ── Check Sheet for saved results ──────────────────────
+window.checkSavedResults = function(imgEl, callback) {
+  if(!CURRENT_KEY) { callback(null); return; }
+  var hash = getImageHash(imgEl);
+  window._currentImageHash = hash;
+  fetch(SCRIPT_URL_RESULTS + '?action=getResults&key=' + encodeURIComponent(CURRENT_KEY) + '&hash=' + encodeURIComponent(hash))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.success && d.found && d.results) callback(d.results);
+      else callback(null);
+    })
+    .catch(function(){ callback(null); });
+};
+
+// ── Save results to Sheet ───────────────────────────────
+window.saveResultsToSheet = function(resultsObj) {
+  if(!CURRENT_KEY || !window._currentImageHash) return;
+  fetch(SCRIPT_URL_RESULTS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'saveResults',
+      secret: 'kpop2024secret',
+      key: CURRENT_KEY,
+      hash: window._currentImageHash,
+      results: resultsObj
+    })
+  }).catch(function(){});
+};
 </script>
 
 <!-- ══ QR CODE LIB ══ -->
@@ -1119,6 +1173,25 @@ function handleFile(file){
       document.getElementById('freeResults').style.display='none';
       document.getElementById('proContent').style.display='none';
       uploadZone.style.display='none';
+
+      // ── Saved results check ──────────────────────────
+      if(window.checkSavedResults){
+        var analyzeBtn = document.getElementById('btnAnalyze');
+        analyzeBtn.textContent = '🔍 CHECKING...';
+        analyzeBtn.disabled = true;
+        checkSavedResults(img, function(saved){
+          analyzeBtn.textContent = 'ANALYZE KARO →';
+          analyzeBtn.disabled = false;
+          if(saved){
+            // Saved results mile! Directly show karo
+            showToast('✅ Pehle ki analysis mili — same results dikha raha hai!');
+            globalMetrics   = saved.metrics   || null;
+            globalFaceData  = saved.faceData  || null;
+            window._savedResults = saved;
+            renderSavedResults(saved);
+          }
+        });
+      }
     };
     img.src=e.target.result;
   };
@@ -1270,6 +1343,37 @@ function showFreeResults(m,isReal){
     document.getElementById('fSkin').style.width=m.skinScore+'%';
     document.getElementById('fEye').style.width=m.eyeScore+'%';
   },250);
+  document.getElementById('freeResults').scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(function(){ unlockProContent(); }, 600);
+
+  // ── Save results to Google Sheet ─────────────────────
+  setTimeout(function(){
+    if(window.saveResultsToSheet && globalMetrics && globalFaceData){
+      saveResultsToSheet({
+        metrics:  globalMetrics,
+        faceData: globalFaceData
+      });
+    }
+  }, 2000);
+}
+
+// ── Render saved results (skip re-analysis) ───────────────
+function renderSavedResults(saved){
+  if(!saved || !saved.metrics || !saved.faceData) return;
+  globalMetrics  = saved.metrics;
+  globalFaceData = saved.faceData;
+
+  // Show results directly
+  document.getElementById('freeResults').style.display = 'block';
+  var m    = saved.metrics;
+  var conf = Math.round(m.confidence * 100) || 85;
+  setTimeout(function(){
+    document.getElementById('confFill').style.width = conf+'%';
+    document.getElementById('fSym').style.width  = m.symmetry+'%';
+    document.getElementById('fJaw').style.width  = m.jawScore+'%';
+    document.getElementById('fSkin').style.width = m.skinScore+'%';
+    document.getElementById('fEye').style.width  = m.eyeScore+'%';
+  }, 250);
   document.getElementById('freeResults').scrollIntoView({behavior:'smooth',block:'start'});
   setTimeout(function(){ unlockProContent(); }, 600);
 }
