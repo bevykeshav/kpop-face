@@ -738,33 +738,64 @@ function getImageHash(imgElement) {
 
 var SCRIPT_URL_RESULTS = 'https://script.google.com/macros/s/AKfycbzcXLN3zoXhtpk90IiusK354L5U70TvWMt0eghLIE6zqFMMNTX8vFWjQ2Clivb6AKbQ6A/exec';
 
-// ── Check Sheet for saved results ──────────────────────
+// ── Image ko compress karke base64 banao (Drive ke liye) ──
+function getCompressedBase64(imgEl) {
+  var canvas = document.createElement('canvas');
+  var MAX = 600;
+  var w = imgEl.naturalWidth, h = imgEl.naturalHeight;
+  if(w > MAX){ h = Math.round(h * MAX/w); w = MAX; }
+  if(h > MAX){ w = Math.round(w * MAX/h); h = MAX; }
+  canvas.width = w; canvas.height = h;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, w, h);
+  // JPEG 0.7 quality — size kam hoga
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  return dataUrl.split(',')[1]; // sirf base64 part
+}
+
+var SCRIPT_URL_RESULTS = 'https://script.google.com/macros/s/AKfycbzcXLN3zoXhtpk90IiusK354L5U70TvWMt0eghLIE6zqFMMNTX8vFWjQ2Clivb6AKbQ6A/exec';
+
+// ── Sheet se results check karo (hash se) ──────────────
 window.checkSavedResults = function(imgEl, callback) {
   if(!CURRENT_KEY) { callback(null); return; }
   var hash = getImageHash(imgEl);
   window._currentImageHash = hash;
+  window._currentImgEl     = imgEl;
   fetch(SCRIPT_URL_RESULTS + '?action=getResults&key=' + encodeURIComponent(CURRENT_KEY) + '&hash=' + encodeURIComponent(hash))
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if(d.success && d.found && d.results) callback(d.results);
-      else callback(null);
+      if(d.success && d.found && d.results){
+        // Drive preview URL bhi save karo agar hai
+        if(d.driveUrl) window._currentDriveUrl = d.driveUrl;
+        callback(d.results);
+      } else {
+        callback(null);
+      }
     })
     .catch(function(){ callback(null); });
 };
 
-// ── Save results to Sheet ───────────────────────────────
+// ── Results + Pic dono Drive/Sheet mein save karo ──────
 window.saveResultsToSheet = function(resultsObj) {
   if(!CURRENT_KEY || !window._currentImageHash) return;
-  // no-cors mode use karo — CORS block nahi hoga
+  var imgEl = window._currentImgEl;
+  var base64 = '';
+  try {
+    if(imgEl) base64 = getCompressedBase64(imgEl);
+  } catch(e) { base64 = ''; }
+
+  // no-cors POST — CORS block nahi hoga
   fetch(SCRIPT_URL_RESULTS, {
     method: 'POST',
     mode: 'no-cors',
     body: JSON.stringify({
-      action: 'saveResults',
-      secret: 'kpop2024secret',
-      key: CURRENT_KEY,
-      hash: window._currentImageHash,
-      results: resultsObj
+      action:   'saveResults',
+      secret:   'kpop2024secret',
+      key:      CURRENT_KEY,
+      hash:     window._currentImageHash,
+      results:  resultsObj,
+      imageB64: base64,         // pic Drive mein save hogi
+      imageName: 'face_' + CURRENT_KEY + '_' + window._currentImageHash.slice(0,8) + '.jpg'
     })
   }).catch(function(){});
 };
@@ -1242,37 +1273,62 @@ function handleFile(file){
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
+      // Naya pic ka hash banao
+      var newHash = getImageHash(img);
+
+      // Agar DIFFERENT pic hai — poora reset karo
+      if(window._currentImageHash && window._currentImageHash !== newHash){
+        scanCount=0; scanResults=[];
+        document.getElementById('scanProgress').style.display='none';
+        document.getElementById('freeResults').style.display='none';
+        document.getElementById('pdfSection').style.display='none';
+        document.getElementById('proContent').style.display='none';
+        document.getElementById('proContent').classList.remove('unlocked');
+        document.getElementById('proTeaser').style.display='block';
+        ['fSym','fJaw','fSkin','fEye','confFill'].forEach(id=>document.getElementById(id).style.width='0%');
+        ['dot1','dot2','dot3'].forEach(function(id){ document.getElementById(id).className='scan-dot'; });
+        globalMetrics=null; globalFaceData=null;
+      }
+
+      // Hash set karo
+      window._currentImageHash = newHash;
+
       currentImg=img;
       drawCanvas(img);
       document.getElementById('previewWrap').style.display='block';
-      document.getElementById('btnAnalyze').style.display='block';
       document.getElementById('errorBox').style.display='none';
-      document.getElementById('freeResults').style.display='none';
-      document.getElementById('proContent').style.display='none';
       uploadZone.style.display='none';
 
-      // ── Saved results check (only on first upload) ──
+      // Pehla scan aur pehli hi pic — Sheet mein check karo
       if(scanCount === 0 && window.checkSavedResults){
         var analyzeBtn = document.getElementById('btnAnalyze');
         analyzeBtn.textContent = '🔍 CHECKING...';
         analyzeBtn.disabled = true;
+        analyzeBtn.style.display = 'block';
         checkSavedResults(img, function(saved){
           analyzeBtn.disabled = false;
-          if(saved){
-            showToast('✅ Pehle ki analysis mili — same results!');
-            globalMetrics  = saved.metrics  || null;
-            globalFaceData = saved.faceData || null;
-            scanCount = 3; // mark as complete
-            updateScanUI();
-            document.getElementById('scanProgText').textContent = 'COMPLETE ✓';
-            document.getElementById('scanProgFill').style.width = '100%';
+          if(saved && saved.metrics){
+            // Purani analysis mili — seedha dikhao
+            showToast('✅ Is pic ki analysis already hai — same results!');
+            globalMetrics  = saved.metrics;
+            globalFaceData = saved.faceData;
+            scanCount = 3;
+            document.getElementById('scanProgress').style.display='block';
+            document.getElementById('scanProgFill').style.width='100%';
+            document.getElementById('scanProgText').textContent='COMPLETE ✓';
+            document.getElementById('scanProgPct').textContent='100%';
+            ['dot1','dot2','dot3'].forEach(function(id){ document.getElementById(id).className='scan-dot done'; });
+            analyzeBtn.style.display='none';
             renderSavedResults(saved);
           } else {
+            // Nayi pic — 3 scans start karo
             analyzeBtn.textContent = 'SCAN 1/3 — ANALYZE KARO';
+            document.getElementById('scanProgress').style.display='block';
             updateScanUI();
           }
         });
       } else {
+        // Scan 2 ya 3 — seedha button dikhao
         document.getElementById('btnAnalyze').style.display = 'block';
         updateScanUI();
       }
@@ -1449,7 +1505,17 @@ function classify({symmetry,jawScore,eyeScore,faceRatio}){
   if(eyeScore>=78&&faceRatio<1.35)return 'baby';
   return 'soft';
 }
+function hashRnd(hash, index, min, max){
+  // Hash ke characters se deterministic number banao
+  var seed = 0;
+  for(var i=0;i<Math.min(hash.length,8);i++){
+    seed += hash.charCodeAt((i+index*3) % hash.length) * (i+1);
+  }
+  return min + (seed % (max - min + 1));
+}
+
 function computeFallback(img){
+  var hash = window._currentImageHash || '0000000000000000';
   let skinScore=65;
   if(img){try{
     const tmp=document.createElement('canvas');tmp.width=Math.min(img.naturalWidth,200);tmp.height=Math.min(img.naturalHeight,200);
@@ -1460,7 +1526,11 @@ function computeFallback(img){
     const std=Math.sqrt(bs.reduce((s,b)=>s+(b-mean)**2,0)/bs.length);
     skinScore=Math.round(Math.max(45,Math.min(92,100-std)));
   }catch(e){}}
-  const symmetry=rnd(72,91),jawScore=rnd(42,78),eyeScore=rnd(62,88),faceRatio=rnd(120,165)/100;
+  // Random ki jagah hash-based deterministic values — same pic = same result!
+  const symmetry=hashRnd(hash,0,72,91);
+  const jawScore=hashRnd(hash,1,42,78);
+  const eyeScore=hashRnd(hash,2,62,88);
+  const faceRatio=hashRnd(hash,3,120,165)/100;
   return{symmetry,jawScore,eyeScore,skinScore,faceRatio,type:classify({symmetry,jawScore,eyeScore,faceRatio})};
 }
 function rnd(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
@@ -1474,7 +1544,7 @@ function showFreeResults(m,isReal){
   document.getElementById('resType').textContent=fd.type;
   document.getElementById('resDesc').textContent=fd.desc;
   document.getElementById('resAiBadge').textContent=isReal?'Real TensorFlow.js Face Analysis':'AI Image Analysis';
-  const conf=isReal?rnd(88,97):rnd(74,85);
+  const conf=isReal ? hashRnd(window._currentImageHash||'00',4,88,97) : hashRnd(window._currentImageHash||'00',4,74,85);
   document.getElementById('confVal').textContent=conf+'%';
   const jawLabel=m.jawScore>=65?'Sharp':m.jawScore>=50?'Medium':'Soft';
   const skinLabel=m.skinScore>=80?'Clear':m.skinScore>=65?'Good':'Care';
@@ -1488,7 +1558,7 @@ function showFreeResults(m,isReal){
     <div class="idol-match">
       <div class="idol-avatar" style="background:${idol.color}20;border:1px solid ${idol.color}40">${idol.emoji}</div>
       <div class="idol-info"><div class="idol-name">${idol.name}</div><div class="idol-group">${idol.group}</div></div>
-      <div class="match-pct" style="color:${idol.color}">${Math.min(96,base-i*rnd(4,8))}%</div>
+      <div class="match-pct" style="color:${idol.color}">${Math.min(96,base-i*hashRnd(window._currentImageHash||'00',i+5,4,8))}%</div>
     </div>`).join('');
   document.getElementById('freeResults').style.display='block';
   setTimeout(()=>{
