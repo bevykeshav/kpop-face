@@ -89,11 +89,32 @@ body::before{
 .qr-tag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--cyan);margin-bottom:14px;}
 .qr-box{display:inline-block;background:#fff;padding:10px;border-radius:4px;margin-bottom:14px;}
 .amount-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);padding:7px 18px;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);margin-bottom:12px;}
-.upi-row{display:flex;align-items:center;justify-content:space-between;background:var(--dark);border:1px solid var(--border);padding:10px 14px;gap:10px;margin-bottom:10px;}
+.upi-row{display:flex;align-items:center;justify-content:space-between;background:var(--dark);border:1px solid var(--border);padding:10px 14px;gap:10px;margin-bottom:14px;}
 .upi-txt{font-family:'Space Mono',monospace;font-size:12px;color:var(--cyan);letter-spacing:1px;}
 .copy-btn{background:rgba(0,245,212,.1);border:1px solid rgba(0,245,212,.2);color:var(--cyan);font-size:9px;padding:5px 10px;cursor:pointer;font-family:'Space Mono',monospace;letter-spacing:1px;transition:all .2s;flex-shrink:0;}
-.upi-apps{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
-.upi-app{background:#1a1a2a;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:10px;color:var(--muted);}
+/* UPI App Buttons */
+.upi-apps-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;}
+.upi-app-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.upi-app-btn{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border:1px solid var(--border);
+  background:var(--dark);cursor:pointer;
+  text-decoration:none;transition:all .2s;
+  touch-action:manipulation;
+}
+.upi-app-btn:active{transform:scale(.97);}
+.upi-app-btn.gpay{border-color:rgba(66,133,244,.3);}
+.upi-app-btn.gpay:hover{background:rgba(66,133,244,.08);border-color:rgba(66,133,244,.6);}
+.upi-app-btn.phonepe{border-color:rgba(83,41,150,.3);}
+.upi-app-btn.phonepe:hover{background:rgba(83,41,150,.08);border-color:rgba(83,41,150,.6);}
+.upi-app-btn.paytm{border-color:rgba(0,186,214,.3);}
+.upi-app-btn.paytm:hover{background:rgba(0,186,214,.08);border-color:rgba(0,186,214,.6);}
+.upi-app-btn.anyupi{border-color:rgba(255,215,0,.2);}
+.upi-app-btn.anyupi:hover{background:rgba(255,215,0,.05);border-color:rgba(255,215,0,.4);}
+.upi-app-icon{font-size:22px;flex-shrink:0;}
+.upi-app-info{text-align:left;}
+.upi-app-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--text);}
+.upi-app-sub{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:1px;}
 .form-note{background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.12);padding:12px 14px;font-size:12px;color:#a09050;line-height:1.7;margin-bottom:12px;}
 .back-link{display:block;text-align:center;margin-top:14px;font-size:11px;color:#3a3a5a;cursor:pointer;font-family:'Space Mono',monospace;letter-spacing:1px;}
 .back-link:hover{color:#6a6a9a;}
@@ -275,11 +296,43 @@ body::before{
           <span class="upi-txt">keshavb12@axl</span>
           <button class="copy-btn" onclick="copyUPI()">COPY</button>
         </div>
-        <div class="upi-apps">
-          <span class="upi-app">📱 PhonePe</span>
-          <span class="upi-app">🟢 GPay</span>
-          <span class="upi-app">💜 Paytm</span>
-          <span class="upi-app">🏦 Any UPI</span>
+
+        <!-- UPI App Buttons — phone pe seedha app open hoga -->
+        <div class="upi-apps-label">YA SEEDHA APP SE PAY KARO 👇</div>
+        <div class="upi-app-btns">
+
+          <a class="upi-app-btn gpay" id="btn-gpay" href="#" onclick="payWith('gpay');return false;">
+            <div class="upi-app-icon">🟦</div>
+            <div class="upi-app-info">
+              <div class="upi-app-name">GOOGLE PAY</div>
+              <div class="upi-app-sub">GPay se open karo</div>
+            </div>
+          </a>
+
+          <a class="upi-app-btn phonepe" id="btn-phonepe" href="#" onclick="payWith('phonepe');return false;">
+            <div class="upi-app-icon">💜</div>
+            <div class="upi-app-info">
+              <div class="upi-app-name">PHONE PE</div>
+              <div class="upi-app-sub">PhonePe se open karo</div>
+            </div>
+          </a>
+
+          <a class="upi-app-btn paytm" id="btn-paytm" href="#" onclick="payWith('paytm');return false;">
+            <div class="upi-app-icon">🔵</div>
+            <div class="upi-app-info">
+              <div class="upi-app-name">PAYTM</div>
+              <div class="upi-app-sub">Paytm se open karo</div>
+            </div>
+          </a>
+
+          <a class="upi-app-btn anyupi" id="btn-anyupi" href="#" onclick="payWith('any');return false;">
+            <div class="upi-app-icon">🏦</div>
+            <div class="upi-app-info">
+              <div class="upi-app-name">ANY UPI</div>
+              <div class="upi-app-sub">Koi bhi UPI app</div>
+            </div>
+          </a>
+
         </div>
       </div>
       <div class="form-note">⚡ Payment ke baad <strong>neeche button dabao</strong> — form mein naam, email aur phone bharo</div>
@@ -399,6 +452,41 @@ body::before{
       t.classList.add('show');
       setTimeout(function(){ t.classList.remove('show'); },2500);
     });
+  };
+
+  // UPI App Deep Links
+  window.payWith = function(app){
+    var upiParams = 'pa='+UPI_ID+'&pn=KPop%20Tools&am=49&cu=INR&tn=KPop%20Tools%20Subscription';
+    var urls = {
+      'gpay':    'tez://upi/pay?'+upiParams,
+      'phonepe': 'phonepe://pay?'+upiParams,
+      'paytm':   'paytmmp://upi/pay?'+upiParams,
+      'any':     'upi://pay?'+upiParams,
+    };
+    var fallback = 'upi://pay?'+upiParams;
+    var url = urls[app] || fallback;
+
+    // App open karne ki koshish karo
+    var win = window.open(url, '_blank');
+
+    // Agar app nahi khula (desktop ya app nahi installed)
+    setTimeout(function(){
+      try{
+        if(!win || win.closed){
+          // Fallback: generic UPI link try karo
+          window.location.href = fallback;
+        }
+      }catch(e){
+        window.location.href = fallback;
+      }
+    }, 1500);
+
+    // Toast dikhao
+    var appNames = {'gpay':'Google Pay','phonepe':'PhonePe','paytm':'Paytm','any':'UPI App'};
+    var t=document.getElementById('toast');
+    t.textContent = '📱 '+( appNames[app]||'UPI')+' open ho raha hai...';
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); },3000);
   };
 
   // Open tool — key sessionStorage mein save hai
