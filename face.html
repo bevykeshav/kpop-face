@@ -697,7 +697,7 @@ function getImageHash(imgElement) {
   return hash;
 }
 
-var SCRIPT_URL_RESULTS = 'https://script.google.com/macros/s/AKfycbyznaynjbZrUjWr-rRO9bC7SJPSW_TscQNOG7EQ-rIKi7sdyH7kXoBcMJ77gn2arwFqMg/exec';
+var SCRIPT_URL_RESULTS = 'https://script.google.com/macros/s/AKfycbzcXLN3zoXhtpk90IiusK354L5U70TvWMt0eghLIE6zqFMMNTX8vFWjQ2Clivb6AKbQ6A/exec';
 
 // ── Check Sheet for saved results ──────────────────────
 window.checkSavedResults = function(imgEl, callback) {
@@ -716,9 +716,10 @@ window.checkSavedResults = function(imgEl, callback) {
 // ── Save results to Sheet ───────────────────────────────
 window.saveResultsToSheet = function(resultsObj) {
   if(!CURRENT_KEY || !window._currentImageHash) return;
+  // no-cors mode use karo — CORS block nahi hoga
   fetch(SCRIPT_URL_RESULTS, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode: 'no-cors',
     body: JSON.stringify({
       action: 'saveResults',
       secret: 'kpop2024secret',
