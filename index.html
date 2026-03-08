@@ -442,9 +442,10 @@ body::before{
       .catch(function(){ cb(false,null,'❌ Server se connect nahi hua.'); });
   }
 
-  function showDashboard(user){
+  function showDashboard(user, key){
     // Save to sessionStorage
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    if(key) sessionStorage.setItem('kpop_license_key', key);
 
     document.getElementById('gate').style.display      = 'none';
     document.getElementById('dashboard').style.display = 'block';
@@ -470,7 +471,7 @@ body::before{
       if(ok){
         okEl.textContent='✅ Valid! Dashboard load ho raha hai...';
         okEl.style.display='block'; errEl.style.display='none';
-        setTimeout(function(){ showDashboard(user); },800);
+        setTimeout(function(){ showDashboard(user, key); },800);
       } else {
         showErr(msg||'Key invalid hai');
         setLoading(false);
